@@ -1,39 +1,43 @@
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Section } from "@/components/layout/section";
+import {
+  Heading,
+  Text,
+  Label,
+  Caption,
+} from "@/components/ui/typography";
 
 export default function Home() {
   return (
-    <Section>
-      <Card
-        elevation="md"
-        interactive
-        className="max-w-md"
-      >
-        <Card.Header>
-          <h2 className="text-2xl font-bold">
-            Ethiopian Yirgacheffe
-          </h2>
+      <div className="space-y-8">
 
-          <p className="text-sm text-stone-500">
-            Bright acidity with floral notes.
-          </p>
-        </Card.Header>
+        <Heading level={1}>
+          Coffee OS
+        </Heading>
 
-        <Card.Content>
-          <p>
-            Freshly roasted specialty coffee
-            sourced directly from local
-            farmers.
-          </p>
-        </Card.Content>
+        <Heading level={2}>
+          Specialty Coffee Platform
+        </Heading>
 
-        <Card.Footer>
-          <Button fullWidth>
-            Order Now
-          </Button>
-        </Card.Footer>
-      </Card>
-    </Section>
-  );
+        <Heading level={3}>
+          Crafted with Care
+        </Heading>
+
+        <Text>
+          Coffee OS is a reusable framework for
+          specialty coffee shops and cafés.
+        </Text>
+
+        <Text variant="muted">
+          Every component follows the same
+          architecture.
+        </Text>
+
+        <Label htmlFor="email">
+          Email Address
+        </Label>
+
+        <Caption>
+          Last updated 2 minutes ago
+        </Caption>
+
+      </div>  );
 }
