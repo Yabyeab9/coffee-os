@@ -1,9 +1,10 @@
-
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Section } from "@/components/layout/section";
 
 export default function Home() {
   return (
-   
+    <Section>
       <Card
         elevation="md"
         interactive
@@ -28,9 +29,11 @@ export default function Home() {
         </Card.Content>
 
         <Card.Footer>
+          <Button fullWidth>
             Order Now
-         
+          </Button>
         </Card.Footer>
       </Card>
+    </Section>
   );
 }
