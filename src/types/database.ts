@@ -1,8 +1,8 @@
 // Coffee OS — Database Types
 // Auto-derived from Supabase schema. Do not hardcode values.
 
-export type UserRole = 'admin' | 'owner' | 'manager' | 'editor';
-export type ReservationStatus = 'pending' | 'confirmed' | 'cancelled' | 'no_show';
+export type UserRole = 'admin' | 'owner' | 'manager' | 'editor' | 'customer';
+export type ReservationStatus = 'pending' | 'confirmed' | 'cancelled' | 'no_show' | 'completed';
 export type ContentStatus = 'draft' | 'published';
 export type TestimonialStatus = 'pending' | 'approved' | 'rejected';
 export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded';
@@ -299,4 +299,58 @@ export interface PaginatedResult<T> {
   page: number;
   pageSize: number;
   hasMore: boolean;
+}
+
+export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'served' | 'completed' | 'cancelled';
+export type Tier = 'bronze' | 'silver' | 'gold' | 'platinum';
+
+export interface Order {
+  id: string;
+  user_id: string;
+  cafe_id: string;
+  reservation_id?: string;
+  order_number: string;
+  subtotal: number;
+  tax: number;
+  service_fee: number;
+  total_amount: number;
+  payment_status: PaymentStatus;
+  order_status: OrderStatus;
+  payment_method?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrderItem {
+  id: string;
+  order_id: string;
+  menu_item_id: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  customization?: any;
+  created_at: string;
+}
+
+export interface LoyaltyPoint {
+  id: string;
+  user_id: string;
+  cafe_id: string;
+  points: number;
+  tier: Tier;
+  total_earned: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  cafe_id: string;
+  title: string;
+  message: string;
+  type: string;
+  is_read: boolean;
+  created_at: string;
 }

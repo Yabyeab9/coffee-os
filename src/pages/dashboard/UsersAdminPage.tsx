@@ -17,6 +17,7 @@ const ROLE_STYLES: Record<UserRole, string> = {
   owner: 'bg-primary/15 text-primary border-primary/30',
   manager: 'bg-accent/15 text-accent border-accent/30',
   editor: 'bg-secondary text-muted-foreground border-border',
+  customer: 'bg-muted text-muted-foreground border-border',
 };
 
 export default function UsersAdminPage() {

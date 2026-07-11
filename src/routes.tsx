@@ -18,16 +18,28 @@ import LoginPage from './pages/LoginPage';
 // ── Dashboard Pages ───────────────────────────────────────────────────────────
 import DashboardPage from './pages/dashboard/DashboardPage';
 import AnalyticsPage from './pages/dashboard/AnalyticsPage';
+import OrdersAdminPage from './pages/dashboard/OrdersAdminPage';
 import MenusPage from './pages/dashboard/MenusPage';
 import GalleryAdminPage from './pages/dashboard/GalleryAdminPage';
 import BlogAdminPage from './pages/dashboard/BlogAdminPage';
 import TestimonialsAdminPage from './pages/dashboard/TestimonialsAdminPage';
 import ReservationsAdminPage from './pages/dashboard/ReservationsAdminPage';
+import CustomersAdminPage from './pages/dashboard/CustomersAdminPage';
+import PaymentsAdminPage from './pages/dashboard/PaymentsAdminPage';
 import AnnouncementsPage from './pages/dashboard/AnnouncementsPage';
 import SeoAdminPage from './pages/dashboard/SeoAdminPage';
 import UsersAdminPage from './pages/dashboard/UsersAdminPage';
 import SettingsPage from './pages/dashboard/SettingsPage';
 import AiStudioPage from './pages/dashboard/AiStudioPage';
+
+// ── Account Pages ─────────────────────────────────────────────────────────────
+import AccountDashboardPage from './pages/account/AccountDashboardPage';
+import OrdersPage from './pages/account/OrdersPage';
+import AccountReservationsPage from './pages/account/ReservationsPage';
+import FavoritesPage from './pages/account/FavoritesPage';
+import ProfilePage from './pages/account/ProfilePage';
+import NotificationsPage from './pages/account/NotificationsPage';
+import AccountSettingsPage from './pages/account/SettingsPage';
 
 export interface RouteConfig {
   name: string;
@@ -57,15 +69,29 @@ export const authRoutes: RouteConfig[] = [
   { name: 'Login', path: '/login', element: <LoginPage />, public: true },
 ];
 
+// ── Account routes (auth required, wrapped in AccountLayout) ─────────────────
+export const accountRoutes: RouteConfig[] = [
+  { name: 'Account Dashboard', path: '', element: <AccountDashboardPage /> },
+  { name: 'Orders', path: 'orders', element: <OrdersPage /> },
+  { name: 'Reservations', path: 'reservations', element: <AccountReservationsPage /> },
+  { name: 'Favorites', path: 'favorites', element: <FavoritesPage /> },
+  { name: 'Profile', path: 'profile', element: <ProfilePage /> },
+  { name: 'Notifications', path: 'notifications', element: <NotificationsPage /> },
+  { name: 'Settings', path: 'settings', element: <AccountSettingsPage /> },
+];
+
 // ── Dashboard routes (auth required, wrapped in DashboardLayout) ──────────────
 export const dashboardRoutes: RouteConfig[] = [
   { name: 'Dashboard',     path: '',              element: <DashboardPage /> },
   { name: 'Analytics',     path: 'analytics',     element: <AnalyticsPage /> },
+  { name: 'Orders',        path: 'orders',        element: <OrdersAdminPage /> },
   { name: 'Menus',         path: 'menus',         element: <MenusPage /> },
   { name: 'Gallery',       path: 'gallery',       element: <GalleryAdminPage /> },
   { name: 'Blog',          path: 'blog',          element: <BlogAdminPage /> },
   { name: 'Testimonials',  path: 'testimonials',  element: <TestimonialsAdminPage /> },
   { name: 'Reservations',  path: 'reservations',  element: <ReservationsAdminPage /> },
+  { name: 'Customers',     path: 'customers',     element: <CustomersAdminPage /> },
+  { name: 'Payments',      path: 'payments',      element: <PaymentsAdminPage /> },
   { name: 'Announcements', path: 'announcements', element: <AnnouncementsPage /> },
   { name: 'SEO',           path: 'seo',           element: <SeoAdminPage /> },
   { name: 'Users',         path: 'users',         element: <UsersAdminPage />, roles: ['admin', 'owner'] },

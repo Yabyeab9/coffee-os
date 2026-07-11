@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AuthGuard, PublicOnlyGuard } from '@/components/common/RouteGuard';
-import { DashboardLayout } from '@/components/layouts/DashboardLayout';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import IntersectObserver from '@/components/common/IntersectObserver';
 import { Toaster } from '@/components/ui/sonner';
 
@@ -34,6 +34,19 @@ import UsersAdminPage from '@/pages/dashboard/UsersAdminPage';
 import SettingsPage from '@/pages/dashboard/SettingsPage';
 import AiStudioPage from '@/pages/dashboard/AiStudioPage';
 
+// ── Account pages ─────────────────────────────────────────────────────────────
+import AccountLayout from '@/components/layout/AccountLayout';
+import AccountDashboardPage from '@/pages/account/AccountDashboardPage';
+import AccountOrdersPage from '@/pages/account/OrdersPage';
+import AccountReservationsPage from '@/pages/account/ReservationsPage';
+import AccountFavoritesPage from '@/pages/account/FavoritesPage';
+import AccountProfilePage from '@/pages/account/ProfilePage';
+import AccountNotificationsPage from '@/pages/account/NotificationsPage';
+import AccountSettingsPage from '@/pages/account/SettingsPage';
+import OrdersAdminPage from '@/pages/dashboard/OrdersAdminPage';
+import CustomersAdminPage from '@/pages/dashboard/CustomersAdminPage';
+import PaymentsAdminPage from '@/pages/dashboard/PaymentsAdminPage';
+
 /** Renders DashboardLayout wrapping nested <Route> children via Outlet */
 function DashboardShell() {
   return (
@@ -41,6 +54,10 @@ function DashboardShell() {
       <Outlet />
     </DashboardLayout>
   );
+}
+
+function AccountShell() {
+  return <AccountLayout />;
 }
 
 const App: React.FC = () => {
@@ -67,14 +84,27 @@ const App: React.FC = () => {
 
           {/* ── Dashboard — auth required ───────────────────────────────── */}
           <Route element={<AuthGuard />}>
+            <Route path="/account" element={<AccountShell />}>
+              <Route index element={<AccountDashboardPage />} />
+              <Route path="orders" element={<AccountOrdersPage />} />
+              <Route path="reservations" element={<AccountReservationsPage />} />
+              <Route path="favorites" element={<AccountFavoritesPage />} />
+              <Route path="profile" element={<AccountProfilePage />} />
+              <Route path="notifications" element={<AccountNotificationsPage />} />
+              <Route path="settings" element={<AccountSettingsPage />} />
+            </Route>
+
             <Route path="/dashboard" element={<DashboardShell />}>
               <Route index element={<DashboardPage />} />
               <Route path="analytics" element={<AnalyticsPage />} />
+              <Route path="orders" element={<OrdersAdminPage />} />
               <Route path="menus" element={<MenusPage />} />
               <Route path="gallery" element={<GalleryAdminPage />} />
               <Route path="blog" element={<BlogAdminPage />} />
               <Route path="testimonials" element={<TestimonialsAdminPage />} />
               <Route path="reservations" element={<ReservationsAdminPage />} />
+              <Route path="customers" element={<CustomersAdminPage />} />
+              <Route path="payments" element={<PaymentsAdminPage />} />
               <Route path="announcements" element={<AnnouncementsPage />} />
               <Route path="seo" element={<SeoAdminPage />} />
               <Route path="ai-studio" element={<AiStudioPage />} />
