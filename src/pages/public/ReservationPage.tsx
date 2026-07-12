@@ -107,13 +107,17 @@ export default function ReservationPage() {
   const cartTotal = cart.reduce((sum, { item, qty }) => sum + ((item.price || 0) * qty), 0);
 
   const handleSubmit = async () => {
-    if (!cafe || !profile) return;
+    if (!session?.user) {
+      toast.error('Please sign in to make a reservation.');
+      return;
+    }
+    if (!cafe) return;
     setIsSubmitting(true);
     
     try {
       const { data: resData, error: resError } = await supabase.from('reservations').insert({
         cafe_id: cafe.id,
-        user_id: profile.id,
+        user_id: session.user.id,
         guest_name: name,
         guest_email: email || null,
         guest_phone: phone || null,
@@ -132,7 +136,7 @@ export default function ReservationPage() {
         const totalAmount = subtotal + tax;
 
         const { data: orderData, error: orderError } = await supabase.from('orders').insert({
-          user_id: profile.id,
+          user_id: session.user.id,
           cafe_id: cafe.id,
           reservation_id: resData.id,
           subtotal,

@@ -265,6 +265,9 @@ export interface AiChatMessage {
 export interface Payment {
   id: string;
   cafe_id: string;
+  user_id: string | null;
+  order_id: string | null;
+  subscription_id: string | null;
   reservation_id: string | null;
   provider: PaymentProvider;
   amount: number;
@@ -338,8 +341,87 @@ export interface LoyaltyPoint {
   user_id: string;
   cafe_id: string;
   points: number;
+  available_points: number;
+  streak_weeks: number;
   tier: Tier;
   total_earned: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LoyaltyTransaction {
+  id: string;
+  user_id: string;
+  cafe_id: string;
+  source: string;
+  points: number;
+  description: string | null;
+  order_id: string | null;
+  reservation_id: string | null;
+  created_at: string;
+}
+
+export interface Subscription {
+  id: string;
+  user_id: string;
+  cafe_id: string;
+  plan_name: string;
+  monthly_price: number;
+  benefits: Record<string, any>;
+  starts_at: string;
+  expires_at: string | null;
+  active: boolean;
+  payment_provider: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AiRecommendation {
+  id: string;
+  user_id: string;
+  cafe_id: string;
+  recommendation_type: string;
+  prompt: string | null;
+  result: Record<string, any>;
+  accepted: boolean;
+  order_id: string | null;
+  created_at: string;
+}
+
+export interface Referral {
+  id: string;
+  cafe_id: string;
+  inviter_id: string;
+  invited_id: string | null;
+  referral_code: string;
+  status: string;
+  reward_type: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserStreak {
+  id: string;
+  user_id: string;
+  cafe_id: string;
+  current_streak: number;
+  longest_streak: number;
+  last_activity: string | null;
+  reward_level: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Promotion {
+  id: string;
+  cafe_id: string;
+  title: string;
+  description: string | null;
+  trigger_type: string;
+  reward_type: string;
+  active: boolean;
+  starts_at: string | null;
+  ends_at: string | null;
   created_at: string;
   updated_at: string;
 }

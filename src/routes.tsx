@@ -40,6 +40,14 @@ import FavoritesPage from './pages/account/FavoritesPage';
 import ProfilePage from './pages/account/ProfilePage';
 import NotificationsPage from './pages/account/NotificationsPage';
 import AccountSettingsPage from './pages/account/SettingsPage';
+import LoyaltyPage from './pages/account/LoyaltyPage';
+import SubscriptionsPage from './pages/account/SubscriptionsPage';
+import AiRecommendationsPage from './pages/account/AiRecommendationsPage';
+import ReferralsPage from './pages/account/ReferralsPage';
+import StreaksPage from './pages/account/StreaksPage';
+
+import PromotionsAdminPage from './pages/dashboard/PromotionsAdminPage';
+import GrowthDashboardPage from './pages/dashboard/GrowthDashboardPage';
 
 export interface RouteConfig {
   name: string;
@@ -75,6 +83,11 @@ export const accountRoutes: RouteConfig[] = [
   { name: 'Orders', path: 'orders', element: <OrdersPage /> },
   { name: 'Reservations', path: 'reservations', element: <AccountReservationsPage /> },
   { name: 'Favorites', path: 'favorites', element: <FavoritesPage /> },
+  { name: 'Loyalty & Rewards', path: 'loyalty', element: <LoyaltyPage /> },
+  { name: 'Subscriptions', path: 'subscriptions', element: <SubscriptionsPage /> },
+  { name: 'AI Recommendations', path: 'ai-recommendations', element: <AiRecommendationsPage /> },
+  { name: 'Referrals', path: 'referrals', element: <ReferralsPage /> },
+  { name: 'Coffee Streaks', path: 'streaks', element: <StreaksPage /> },
   { name: 'Profile', path: 'profile', element: <ProfilePage /> },
   { name: 'Notifications', path: 'notifications', element: <NotificationsPage /> },
   { name: 'Settings', path: 'settings', element: <AccountSettingsPage /> },
@@ -84,6 +97,8 @@ export const accountRoutes: RouteConfig[] = [
 export const dashboardRoutes: RouteConfig[] = [
   { name: 'Dashboard',     path: '',              element: <DashboardPage /> },
   { name: 'Analytics',     path: 'analytics',     element: <AnalyticsPage /> },
+  { name: 'Growth Dashboard', path: 'growth', element: <GrowthDashboardPage /> },
+  { name: 'Promotions', path: 'promotions', element: <PromotionsAdminPage /> },
   { name: 'Orders',        path: 'orders',        element: <OrdersAdminPage /> },
   { name: 'Menus',         path: 'menus',         element: <MenusPage /> },
   { name: 'Gallery',       path: 'gallery',       element: <GalleryAdminPage /> },

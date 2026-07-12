@@ -1,10 +1,21 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AuthGuard, PublicOnlyGuard } from '@/components/common/RouteGuard';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import IntersectObserver from '@/components/common/IntersectObserver';
 import { Toaster } from '@/components/ui/sonner';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 // ── Public pages ──────────────────────────────────────────────────────────────
 import HomePage from '@/pages/public/HomePage';
@@ -43,9 +54,17 @@ import AccountFavoritesPage from '@/pages/account/FavoritesPage';
 import AccountProfilePage from '@/pages/account/ProfilePage';
 import AccountNotificationsPage from '@/pages/account/NotificationsPage';
 import AccountSettingsPage from '@/pages/account/SettingsPage';
+import AccountLoyaltyPage from '@/pages/account/LoyaltyPage';
+import AccountSubscriptionsPage from '@/pages/account/SubscriptionsPage';
+import AccountAiRecommendationsPage from '@/pages/account/AiRecommendationsPage';
+import AccountReferralsPage from '@/pages/account/ReferralsPage';
+import AccountStreaksPage from '@/pages/account/StreaksPage';
 import OrdersAdminPage from '@/pages/dashboard/OrdersAdminPage';
 import CustomersAdminPage from '@/pages/dashboard/CustomersAdminPage';
 import PaymentsAdminPage from '@/pages/dashboard/PaymentsAdminPage';
+
+import GrowthDashboardPage from '@/pages/dashboard/GrowthDashboardPage';
+import PromotionsAdminPage from '@/pages/dashboard/PromotionsAdminPage';
 
 /** Renders DashboardLayout wrapping nested <Route> children via Outlet */
 function DashboardShell() {
@@ -62,10 +81,11 @@ function AccountShell() {
 
 const App: React.FC = () => {
   return (
-    <Router>
-      <AuthProvider>
-        <IntersectObserver />
-        <Routes>
+    <QueryClientProvider client={queryClient}>
+      <Router>
+        <AuthProvider>
+          <IntersectObserver />
+          <Routes>
           {/* ── Public routes ───────────────────────────────────────────── */}
           <Route path="/" element={<HomePage />} />
           <Route path="/menu" element={<MenuPage />} />
@@ -89,6 +109,11 @@ const App: React.FC = () => {
               <Route path="orders" element={<AccountOrdersPage />} />
               <Route path="reservations" element={<AccountReservationsPage />} />
               <Route path="favorites" element={<AccountFavoritesPage />} />
+              <Route path="loyalty" element={<AccountLoyaltyPage />} />
+              <Route path="subscriptions" element={<AccountSubscriptionsPage />} />
+              <Route path="ai-recommendations" element={<AccountAiRecommendationsPage />} />
+              <Route path="referrals" element={<AccountReferralsPage />} />
+              <Route path="streaks" element={<AccountStreaksPage />} />
               <Route path="profile" element={<AccountProfilePage />} />
               <Route path="notifications" element={<AccountNotificationsPage />} />
               <Route path="settings" element={<AccountSettingsPage />} />
@@ -97,6 +122,8 @@ const App: React.FC = () => {
             <Route path="/dashboard" element={<DashboardShell />}>
               <Route index element={<DashboardPage />} />
               <Route path="analytics" element={<AnalyticsPage />} />
+              <Route path="growth" element={<GrowthDashboardPage />} />
+              <Route path="promotions" element={<PromotionsAdminPage />} />
               <Route path="orders" element={<OrdersAdminPage />} />
               <Route path="menus" element={<MenusPage />} />
               <Route path="gallery" element={<GalleryAdminPage />} />
@@ -124,6 +151,7 @@ const App: React.FC = () => {
         <Toaster richColors position="top-right" />
       </AuthProvider>
     </Router>
+    </QueryClientProvider>
   );
 };
 

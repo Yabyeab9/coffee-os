@@ -34,6 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .eq('id', userId)
       .maybeSingle();
     setProfile(data);
+    console.log('Profile loaded:', data);
   }, []);
 
   const refreshProfile = useCallback(async () => {
@@ -52,23 +53,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const {
+    data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session?.user?.id) {
-        await fetchProfile(session.user.id);
-      } else {
-        setProfile(null);
-      }
-      setIsLoading(false);
+
+      Promise.resolve().then(async () => {
+        if (session?.user?.id) {
+          await fetchProfile(session.user.id);
+        } else {
+          setProfile(null);
+        }
+
+        setIsLoading(false);
+      });
     });
 
     return () => subscription.unsubscribe();
   }, [fetchProfile]);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  return {
+    error: error?.message ?? null,
   };
+};
 
   const signInWithGoogle = async (redirectTo?: string) => {
     const { data, error } = await supabase.auth.signInWithSSO({

@@ -1,18 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Search, Filter, Coffee, ShoppingBag, Heart } from 'lucide-react';
+import { Search, Filter, Coffee, ShoppingBag, Heart, Loader2 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { getCafeBySlug, getMenuItems, getMenuCategories, getAnnouncements } from '@/lib/api';
-import type { Cafe, MenuItem, MenuCategory, Announcement } from '@/types/database';
+import type { MenuItem } from '@/types/database';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-
-const CAFE_SLUG = 'origin';
+import { useCafe, useMenuCategories, useMenuItems, useAnnouncements } from '@/hooks/queries';
 
 const DIETARY_LABELS: Record<string, string> = {
   'vegetarian': 'Vegetarian',
@@ -25,36 +23,23 @@ export default function MenuPage() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [cafe, setCafe] = useState<Cafe | null>(null);
-  const [categories, setCategories] = useState<MenuCategory[]>([]);
-  const [allItems, setAllItems] = useState<MenuItem[]>([]);
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const { data: cafe, isLoading: isCafeLoading } = useCafe();
+  const { data: categoriesData } = useMenuCategories(cafe?.id);
+  const { data: menuRes, isLoading: isMenuLoading } = useMenuItems(cafe?.id);
+  const { data: announcementsData } = useAnnouncements(cafe?.id);
+
+  const categories = categoriesData || [];
+  const allItems = menuRes?.data || [];
+  const announcements = announcementsData || [];
+  const isLoading = isCafeLoading || isMenuLoading;
+
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [search, setSearch] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
 
   // Simple cart state for this page
   const [cart, setCart] = useState<{item: MenuItem, qty: number}[]>([]);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    async function load() {
-      const c = await getCafeBySlug(CAFE_SLUG);
-      if (!c) { setIsLoading(false); return; }
-      setCafe(c);
-      const [cats, menuRes, annoData] = await Promise.all([
-        getMenuCategories(c.id),
-        getMenuItems(c.id),
-        getAnnouncements(c.id),
-      ]);
-      setCategories(cats);
-      setAllItems(menuRes.data);
-      setAnnouncements(annoData);
-      setIsLoading(false);
-    }
-    load();
-  }, []);
 
   const addToCart = (item: MenuItem) => {
     if (!session) {
@@ -74,47 +59,46 @@ export default function MenuPage() {
   };
 
   const handleCheckout = async () => {
-    if (!profile || !cafe) return;
+
+
+    console.log("Place order clicked");
+
+    console.log({
+        session,
+        profile,
+        cart,
+        cafe
+    });
+    if (!profile) {
+      toast.error('Please sign in to place an order.');
+      navigate(`/login?returnTo=/menu`);
+      return;
+    }
+    if (!cafe) return;
     setIsSubmitting(true);
     
     try {
-      const subtotal = cart.reduce((sum, c) => sum + ((c.item.price || 0) * c.qty), 0);
-      const tax = subtotal * 0.15;
-      const totalAmount = subtotal + tax;
-
-      // Create order
-      const { data: orderData, error: orderError } = await supabase.from('orders').insert({
-        user_id: profile.id,
-        cafe_id: cafe.id,
-        subtotal,
-        tax,
-        service_fee: 0,
-        total_amount: totalAmount,
-        payment_status: 'unpaid',
-        order_status: 'pending'
-      }).select('id').single();
-
-      if (orderError) throw orderError;
-
-      // Create order items
-      const itemsToInsert = cart.map(c => ({
-        order_id: orderData.id,
+      // 1. Prepare items array for RPC
+      const items = cart.map(c => ({
         menu_item_id: c.item.id,
-        quantity: c.qty,
-        unit_price: c.item.price || 0,
-        total_price: (c.item.price || 0) * c.qty
+        quantity: c.qty
       }));
 
-      const { error: itemsError } = await supabase.from('order_items').insert(itemsToInsert);
-      if (itemsError) throw itemsError;
+      // 2. Call the secure Edge/RPC function to process checkout
+      const { data, error } = await supabase.rpc('process_checkout', {
+        p_cafe_id: cafe.id,
+        p_items: items
+      });
 
-      toast.success('Order placed successfully!');
+      if (error) throw error;
+
+      toast.success('Payment initialized! Order placed securely.');
       setCart([]);
       setIsCheckoutOpen(false);
       navigate('/account/orders');
 
     } catch (error: any) {
-      toast.error('Failed to place order', { description: error.message });
+      toast.error('Failed to complete checkout.', { description: error.message });
     } finally {
       setIsSubmitting(false);
     }
@@ -199,7 +183,13 @@ export default function MenuPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((item, i) => (
+            {filtered.length === 0 ? (
+              <div className="col-span-full py-12 text-center">
+                <Coffee className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                <h3 className="text-xl font-heading font-medium text-foreground mb-2">No items found</h3>
+                <p className="text-muted-foreground">Try adjusting your search or filter criteria.</p>
+              </div>
+            ) : filtered.map((item, i) => (
               <motion.div
                 key={item.id}
                 initial={{ opacity: 0, y: 12 }}

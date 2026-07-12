@@ -12,7 +12,7 @@ type AuthMode = 'login' | 'signup';
 
 export default function LoginPage() {
   const [searchParams] = useSearchParams();
-  const returnTo = searchParams.get('returnTo') || '/dashboard';
+  const returnTo = searchParams.get('returnTo');
   
   const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
@@ -20,12 +20,31 @@ export default function LoginPage() {
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, signUp, signInWithGoogle } = useAuth();
+  const {
+  signIn,
+  signUp,
+  signInWithGoogle,
+  profile,
+   role,
+  isLoading: authLoading
+} = useAuth();
+  
   const navigate = useNavigate();
+React.useEffect(() => {
+  if (authLoading || !profile) return;
 
+  const destination =
+    returnTo ||
+    (profile.role === 'customer'
+      ? '/account'
+      : '/dashboard');
+
+  navigate(destination, { replace: true });
+}, [profile, authLoading, navigate, returnTo]);
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
-    const { error } = await signInWithGoogle(`${window.location.origin}${returnTo}`);
+    const dest = returnTo || '/account';
+    const { error } = await signInWithGoogle(`${window.location.origin}${dest}`);
     if (error) {
       toast.error('Google sign-in failed', { description: error });
       setIsLoading(false);
@@ -44,7 +63,6 @@ export default function LoginPage() {
           toast.error('Sign-in failed', { description: error });
         } else {
           toast.success('Welcome back!');
-          navigate(returnTo);
         }
       } else {
         if (!fullName) { toast.error('Please enter your full name'); return; }

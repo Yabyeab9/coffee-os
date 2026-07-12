@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Coffee, Image, Users, BookOpen, Calendar,
   Settings, ChevronLeft, ChevronRight, Sparkles, LogOut,
   BarChart2, FileText, Megaphone, Globe, Menu, X, Bell,
-  ChevronDown,
+  ChevronDown, TrendingUp, ShoppingBag, CreditCard
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,8 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     items: [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart2 },
+      { label: 'Growth', href: '/dashboard/growth', icon: TrendingUp },
+      { label: 'Promotions', href: '/dashboard/promotions', icon: Megaphone },
     ],
   },
   {
