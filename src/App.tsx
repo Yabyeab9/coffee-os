@@ -27,6 +27,8 @@ import BlogPage from '@/pages/public/BlogPage';
 import BlogPostDetailPage from '@/pages/public/BlogPostDetailPage';
 import ContactPage from '@/pages/public/ContactPage';
 import PrivacyPage from '@/pages/public/PrivacyPage';
+import PaymentSuccessPage from '@/pages/public/PaymentSuccessPage';
+import PaymentFailurePage from '@/pages/public/PaymentFailurePage';
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 import LoginPage from '@/pages/LoginPage';
@@ -96,6 +98,8 @@ const App: React.FC = () => {
           <Route path="/blog/:slug" element={<BlogPostDetailPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/payment-success" element={<PaymentSuccessPage />} />
+          <Route path="/payment-failure" element={<PaymentFailurePage />} />
 
           {/* ── Login — redirect if already signed in ───────────────────── */}
           <Route element={<PublicOnlyGuard />}>
@@ -104,43 +108,47 @@ const App: React.FC = () => {
 
           {/* ── Dashboard — auth required ───────────────────────────────── */}
           <Route element={<AuthGuard />}>
-            <Route path="/account" element={<AccountShell />}>
-              <Route index element={<AccountDashboardPage />} />
-              <Route path="orders" element={<AccountOrdersPage />} />
-              <Route path="reservations" element={<AccountReservationsPage />} />
-              <Route path="favorites" element={<AccountFavoritesPage />} />
-              <Route path="loyalty" element={<AccountLoyaltyPage />} />
-              <Route path="subscriptions" element={<AccountSubscriptionsPage />} />
-              <Route path="ai-recommendations" element={<AccountAiRecommendationsPage />} />
-              <Route path="referrals" element={<AccountReferralsPage />} />
-              <Route path="streaks" element={<AccountStreaksPage />} />
-              <Route path="profile" element={<AccountProfilePage />} />
-              <Route path="notifications" element={<AccountNotificationsPage />} />
-              <Route path="settings" element={<AccountSettingsPage />} />
+            <Route element={<AuthGuard enforceAccount />}>
+              <Route path="/account" element={<AccountShell />}>
+                <Route index element={<AccountDashboardPage />} />
+                <Route path="orders" element={<AccountOrdersPage />} />
+                <Route path="reservations" element={<AccountReservationsPage />} />
+                <Route path="favorites" element={<AccountFavoritesPage />} />
+                <Route path="loyalty" element={<AccountLoyaltyPage />} />
+                <Route path="subscriptions" element={<AccountSubscriptionsPage />} />
+                <Route path="ai-recommendations" element={<AccountAiRecommendationsPage />} />
+                <Route path="referrals" element={<AccountReferralsPage />} />
+                <Route path="streaks" element={<AccountStreaksPage />} />
+                <Route path="profile" element={<AccountProfilePage />} />
+                <Route path="notifications" element={<AccountNotificationsPage />} />
+                <Route path="settings" element={<AccountSettingsPage />} />
+              </Route>
             </Route>
 
-            <Route path="/dashboard" element={<DashboardShell />}>
-              <Route index element={<DashboardPage />} />
-              <Route path="analytics" element={<AnalyticsPage />} />
-              <Route path="growth" element={<GrowthDashboardPage />} />
-              <Route path="promotions" element={<PromotionsAdminPage />} />
-              <Route path="orders" element={<OrdersAdminPage />} />
-              <Route path="menus" element={<MenusPage />} />
-              <Route path="gallery" element={<GalleryAdminPage />} />
-              <Route path="blog" element={<BlogAdminPage />} />
-              <Route path="testimonials" element={<TestimonialsAdminPage />} />
-              <Route path="reservations" element={<ReservationsAdminPage />} />
-              <Route path="customers" element={<CustomersAdminPage />} />
-              <Route path="payments" element={<PaymentsAdminPage />} />
-              <Route path="announcements" element={<AnnouncementsPage />} />
-              <Route path="seo" element={<SeoAdminPage />} />
-              <Route path="ai-studio" element={<AiStudioPage />} />
-              {/* Owner/Admin only */}
-              <Route element={<AuthGuard roles={['admin', 'owner', 'manager']} />}>
-                <Route path="settings" element={<SettingsPage />} />
-              </Route>
-              <Route element={<AuthGuard roles={['admin', 'owner']} />}>
-                <Route path="users" element={<UsersAdminPage />} />
+            <Route element={<AuthGuard enforceDashboard />}>
+              <Route path="/dashboard" element={<DashboardShell />}>
+                <Route index element={<DashboardPage />} />
+                <Route path="analytics" element={<AnalyticsPage />} />
+                <Route path="growth" element={<GrowthDashboardPage />} />
+                <Route path="promotions" element={<PromotionsAdminPage />} />
+                <Route path="orders" element={<OrdersAdminPage />} />
+                <Route path="menus" element={<MenusPage />} />
+                <Route path="gallery" element={<GalleryAdminPage />} />
+                <Route path="blog" element={<BlogAdminPage />} />
+                <Route path="testimonials" element={<TestimonialsAdminPage />} />
+                <Route path="reservations" element={<ReservationsAdminPage />} />
+                <Route path="customers" element={<CustomersAdminPage />} />
+                <Route path="payments" element={<PaymentsAdminPage />} />
+                <Route path="announcements" element={<AnnouncementsPage />} />
+                <Route path="seo" element={<SeoAdminPage />} />
+                <Route path="ai-studio" element={<AiStudioPage />} />
+                {/* Owner/Admin only */}
+                <Route element={<AuthGuard roles={['admin', 'owner', 'manager']} />}>
+                  <Route path="settings" element={<SettingsPage />} />
+                </Route>
+                <Route element={<AuthGuard roles={['admin', 'owner']} />}>
+                  <Route path="users" element={<UsersAdminPage />} />
+                </Route>
               </Route>
             </Route>
           </Route>

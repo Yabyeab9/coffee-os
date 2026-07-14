@@ -5,22 +5,19 @@ import { Flame, Trophy } from 'lucide-react';
 import type { UserStreak } from '@/types/database';
 
 export default function StreaksPage() {
-  const { profile, cafeId } = useAuth();
+  const { profile } = useAuth();
   const [streak, setStreak] = useState<UserStreak | null>(null);
 
   useEffect(() => {
     async function load() {
-      if (!profile?.id || !cafeId) return;
-      const { data } = await supabase.from('user_streaks').select('*').eq('user_id', profile.id).eq('cafe_id', cafeId).maybeSingle();
-      if (!data) {
-        // mock if empty
-        setStreak({ current_streak: 2, longest_streak: 5, reward_level: 1 } as any);
-      } else {
+      if (!profile?.id) return;
+      const { data } = await supabase.from('user_streaks').select('*').eq('user_id', profile.id).maybeSingle();
+      if (data) {
         setStreak(data);
       }
     }
     load();
-  }, [profile?.id, cafeId]);
+  }, [profile?.id]);
 
   return (
     <div className="p-6 md:p-10 max-w-4xl mx-auto space-y-8">

@@ -7,33 +7,34 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 export default function OrdersPage() {
-  const { profile, cafeId } = useAuth();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const { profile } = useAuth();
+  const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function fetchOrders() {
-      if (!profile?.id || !cafeId) return;
+      if (!profile?.id) return;
       const { data } = await supabase
         .from('orders')
-        .select('*')
+        .select('*, order_items(*, menus(name)), cafes(name)')
         .eq('user_id', profile.id)
-        .eq('cafe_id', cafeId)
         .order('created_at', { ascending: false });
       
       setOrders(data || []);
       setIsLoading(false);
     }
     fetchOrders();
-  }, [profile?.id, cafeId]);
+  }, [profile?.id]);
 
   const cancelOrder = async (orderId: string) => {
-    await supabase.from('orders').update({ order_status: 'cancelled' }).eq('id', orderId);
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, order_status: 'cancelled' } : o));
+    const { error } = await supabase.from('orders').update({ order_status: 'cancelled' }).eq('id', orderId);
+    if (!error) {
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, order_status: 'cancelled' } : o));
+    }
   };
 
   if (isLoading) {
-    return <div className="p-10 flex justify-center"><Coffee className="w-6 h-6 text-primary animate-pulse" /></div>;
+    return <div className="p-10 flex justify-center min-h-[400px] items-center"><Coffee className="w-8 h-8 text-primary animate-pulse" /></div>;
   }
 
   return (
@@ -49,19 +50,28 @@ export default function OrdersPage() {
         <div className="space-y-4">
           {orders.map(order => (
             <div key={order.id} className="glass rounded-xl p-5 border-l-4 border-l-primary/50">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-4">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-foreground">{order.order_number}</h3>
+                    <h3 className="font-semibold text-foreground">Order #{order.order_number || order.id.substring(0, 8)}</h3>
                     <Badge variant="outline" className="capitalize text-xs py-0 h-5">{order.order_status}</Badge>
-                    <Badge variant="secondary" className="capitalize text-xs py-0 h-5">{order.payment_status}</Badge>
+                    <Badge variant="secondary" className="capitalize text-xs py-0 h-5 bg-primary/10 text-primary hover:bg-primary/20">{order.payment_status}</Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
+                    {order.cafes?.name && <span className="font-medium text-foreground mr-2">{order.cafes.name}</span>}
                     {new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
                   </p>
+                  
+                  <div className="mt-3 space-y-1">
+                    {order.order_items?.map((item: any) => (
+                      <p key={item.id} className="text-sm text-foreground">
+                        <span className="text-muted-foreground">{item.quantity}x</span> {item.menus?.name || 'Item'}
+                      </p>
+                    ))}
+                  </div>
                 </div>
-                <div className="text-left md:text-right">
-                  <p className="text-lg font-semibold text-primary">ETB {order.total_amount}</p>
+                <div className="text-left md:text-right mt-2 md:mt-0">
+                  <p className="text-lg font-semibold text-primary">{order.total_amount} ETB</p>
                 </div>
               </div>
               
@@ -71,9 +81,6 @@ export default function OrdersPage() {
                     <X className="w-4 h-4 mr-1" /> Cancel Order
                   </Button>
                 )}
-                <Button variant="outline" size="sm" onClick={() => {}} className="ml-auto bg-primary/10 text-primary border-transparent hover:bg-primary/20">
-                  View Details <ChevronRight className="w-4 h-4 ml-1" />
-                </Button>
               </div>
             </div>
           ))}

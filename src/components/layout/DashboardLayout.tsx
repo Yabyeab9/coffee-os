@@ -39,21 +39,22 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     ],
   },
   {
+    title: 'Management',
+    items: [
+      { label: 'Live Order Queue', href: '/dashboard/orders', icon: ShoppingBag, badge: 'Live' },
+      { label: 'Menu Catalog', href: '/dashboard/menus', icon: Coffee },
+      { label: 'Reservations', href: '/dashboard/reservations', icon: Calendar },
+      { label: 'Store Operations', href: '/dashboard/store-ops', icon: Settings },
+    ],
+  },
+  {
     title: 'Content',
     items: [
-      { label: 'Menus', href: '/dashboard/menus', icon: Coffee },
       { label: 'Gallery', href: '/dashboard/gallery', icon: Image },
       { label: 'Blog', href: '/dashboard/blog', icon: BookOpen },
       { label: 'Pages', href: '/dashboard/pages', icon: FileText },
       { label: 'Testimonials', href: '/dashboard/testimonials', icon: Users },
-    ],
-  },
-  {
-    title: 'Operations',
-    items: [
-      { label: 'Reservations', href: '/dashboard/reservations', icon: Calendar },
       { label: 'Announcements', href: '/dashboard/announcements', icon: Megaphone },
-      { label: 'SEO', href: '/dashboard/seo', icon: Globe },
     ],
   },
   {
@@ -63,9 +64,10 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     ],
   },
   {
-    title: 'Account',
+    title: 'System',
     items: [
       { label: 'Users', href: '/dashboard/users', icon: Users },
+      { label: 'SEO', href: '/dashboard/seo', icon: Globe },
       { label: 'Settings', href: '/dashboard/settings', icon: Settings },
     ],
   },

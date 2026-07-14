@@ -25,17 +25,17 @@ const PLANS = [
 ];
 
 export default function SubscriptionsPage() {
-  const { profile, cafeId } = useAuth();
+  const { profile } = useAuth();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
 
   useEffect(() => {
     async function load() {
-      if (!profile?.id || !cafeId) return;
-      const { data } = await supabase.from('subscriptions').select('*').eq('user_id', profile.id).eq('cafe_id', cafeId).eq('active', true).maybeSingle();
+      if (!profile?.id) return;
+      const { data } = await supabase.from('subscriptions').select('*').eq('user_id', profile.id).eq('active', true).maybeSingle();
       setSubscription(data);
     }
     load();
-  }, [profile?.id, cafeId]);
+  }, [profile?.id]);
 
   return (
     <div className="p-6 md:p-10 max-w-5xl mx-auto space-y-8">

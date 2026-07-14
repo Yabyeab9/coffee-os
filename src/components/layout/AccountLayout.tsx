@@ -59,13 +59,12 @@ export default function AccountLayout() {
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">My Account</p>
           </div>
           {NAV_ITEMS.map((item) => {
-            const isActive = location.pathname === item.path;
             return (
               <NavLink
                 key={item.name}
                 to={item.path}
                 onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                 }`}
                 end={item.path === '/account'}

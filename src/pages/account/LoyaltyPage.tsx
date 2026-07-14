@@ -6,22 +6,22 @@ import type { LoyaltyPoint, LoyaltyTransaction } from '@/types/database';
 import { Button } from '@/components/ui/button';
 
 export default function LoyaltyPage() {
-  const { profile, cafeId } = useAuth();
+  const { profile } = useAuth();
   const [loyalty, setLoyalty] = useState<LoyaltyPoint | null>(null);
   const [transactions, setTransactions] = useState<LoyaltyTransaction[]>([]);
   
   useEffect(() => {
     async function load() {
-      if (!profile?.id || !cafeId) return;
+      if (!profile?.id) return;
       const [pointRes, txRes] = await Promise.all([
-        supabase.from('loyalty_points').select('*').eq('user_id', profile.id).eq('cafe_id', cafeId).maybeSingle(),
-        supabase.from('loyalty_transactions').select('*').eq('user_id', profile.id).eq('cafe_id', cafeId).order('created_at', { ascending: false }).limit(10)
+        supabase.from('loyalty_points').select('*').eq('user_id', profile.id).maybeSingle(),
+        supabase.from('loyalty_transactions').select('*').eq('user_id', profile.id).order('created_at', { ascending: false }).limit(10)
       ]);
       setLoyalty(pointRes.data);
       setTransactions(txRes.data || []);
     }
     load();
-  }, [profile?.id, cafeId]);
+  }, [profile?.id]);
 
   return (
     <div className="p-6 md:p-10 max-w-4xl mx-auto space-y-8">

@@ -1,39 +1,39 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { Calendar, Coffee, ChevronRight, X } from 'lucide-react';
-import type { ReservationStatus } from '@/types/database';
+import { Calendar, Coffee, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 export default function ReservationsPage() {
-  const { profile, cafeId } = useAuth();
+  const { profile } = useAuth();
   const [reservations, setReservations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function fetchReservations() {
-      if (!profile?.id || !cafeId) return;
+      if (!profile?.id) return;
       const { data } = await supabase
         .from('reservations')
-        .select('*')
+        .select('*, cafes(name)')
         .eq('user_id', profile.id)
-        .eq('cafe_id', cafeId)
         .order('reservation_date', { ascending: false });
       
       setReservations(data || []);
       setIsLoading(false);
     }
     fetchReservations();
-  }, [profile?.id, cafeId]);
+  }, [profile?.id]);
 
   const cancelReservation = async (id: string) => {
-    await supabase.from('reservations').update({ status: 'cancelled' }).eq('id', id);
-    setReservations(prev => prev.map(r => r.id === id ? { ...r, status: 'cancelled' } : r));
+    const { error } = await supabase.from('reservations').update({ status: 'cancelled' }).eq('id', id);
+    if (!error) {
+      setReservations(prev => prev.map(r => r.id === id ? { ...r, status: 'cancelled' } : r));
+    }
   };
 
   if (isLoading) {
-    return <div className="p-10 flex justify-center"><Coffee className="w-6 h-6 text-primary animate-pulse" /></div>;
+    return <div className="p-10 flex justify-center min-h-[400px] items-center"><Coffee className="w-8 h-8 text-primary animate-pulse" /></div>;
   }
 
   return (
@@ -49,20 +49,34 @@ export default function ReservationsPage() {
         <div className="space-y-4">
           {reservations.map(res => (
             <div key={res.id} className="glass rounded-xl p-5 border-l-4 border-l-accent/50">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-4">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-foreground">Table for {res.party_size}</h3>
-                    <Badge variant="outline" className="capitalize text-xs py-0 h-5">{res.status}</Badge>
+                    <h3 className="font-semibold text-foreground">Table for {res.party_size} {res.cafes?.name ? `at ${res.cafes.name}` : ''}</h3>
+                    <Badge variant="outline" className={`capitalize text-xs py-0 h-5 ${
+                      res.status === 'confirmed' ? 'bg-green-500/10 text-green-600 border-green-500/20' : 
+                      res.status === 'cancelled' ? 'bg-destructive/10 text-destructive border-destructive/20' : ''
+                    }`}>{res.status}</Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {new Date(res.reservation_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })} at {res.reservation_time}
+                    Date: {new Date(res.reservation_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Time: {res.reservation_time.substring(0, 5)}
+                  </p>
+                  {res.notes && (
+                    <p className="text-sm text-muted-foreground mt-2 bg-background/50 p-2 rounded-md">
+                      <span className="font-medium text-foreground">Notes:</span> {res.notes}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-3">
+                    Created on {new Date(res.created_at).toLocaleDateString()}
                   </p>
                 </div>
               </div>
               
               <div className="flex gap-3 pt-4 border-t border-border/50">
-                {res.status === 'pending' && (
+                {(res.status === 'pending' || res.status === 'confirmed') && (
                   <Button variant="outline" size="sm" onClick={() => cancelReservation(res.id)} className="text-destructive hover:text-destructive border-border">
                     <X className="w-4 h-4 mr-1" /> Cancel Reservation
                   </Button>

@@ -11,56 +11,57 @@ function AuthLoader() {
   );
 }
 
-/** Protects dashboard/account routes — redirects unauthenticated users to /login */
-export function AuthGuard({ roles }: { roles?: string[] } = {}) {
-  const { session, role, profile, isLoading } = useAuth();
+/** Protects dashboard routes — redirects unauthenticated users to /login */
+export function AuthGuard({ roles, enforceDashboard, enforceAccount }: { roles?: string[]; enforceDashboard?: boolean; enforceAccount?: boolean } = {}) {
+  const { session, role, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     if (isLoading) return;
-
-    const currentRole = role || profile?.role;
-
     if (!session) {
       navigate('/login', { state: { from: location.pathname }, replace: true });
-    } else if (roles && currentRole && !roles.includes(currentRole)) {
-      // FIX: If a customer hits an admin route, send them to /account instead of /dashboard
-      const dest = currentRole === 'customer' ? '/account' : '/dashboard';
-      navigate(dest, { replace: true });
+      return;
     }
-  }, [session, role, profile, isLoading, navigate, location.pathname, roles]);
+    
+    // Redirect customers away from dashboard
+    if (enforceDashboard && role === 'customer') {
+      navigate('/account', { replace: true });
+      return;
+    }
+
+    // Redirect admins away from customer account? Actually maybe admins shouldn't use /account, but let's just make sure customers stay out of dashboard.
+    if (enforceAccount && role !== 'customer') {
+      // If we want admins out of account, uncomment:
+      // navigate('/dashboard', { replace: true });
+    }
+
+    if (roles && role && !roles.includes(role)) {
+      navigate(role === 'customer' ? '/account' : '/dashboard', { replace: true });
+    }
+  }, [session, role, isLoading, navigate, location.pathname, roles, enforceDashboard, enforceAccount]);
 
   if (isLoading) return <AuthLoader />;
   if (!session) return null;
+  
+  // Extra safety render check
+  if (enforceDashboard && role === 'customer') return null;
+
   return <Outlet />;
 }
 
-/** Redirects already-logged-in users away from /login based on their role */
+/** Redirects already-logged-in users away from /login */
 export function PublicOnlyGuard() {
-  const { session, role, profile, isLoading } = useAuth();
+  const { session, role, isLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (isLoading) return;
-
-    if (session) {
-      const currentRole = role || profile?.role;
-      
-      // CRITICAL: If session exists but role hasn't arrived in state yet, 
-      // wait for it so we don't accidentally send a customer to /dashboard
-      if (!currentRole) return; 
-
-      const dest = currentRole === 'customer' ? '/account' : '/dashboard';
-      navigate(dest, { replace: true });
+    if (!isLoading && session) {
+      navigate(role === 'customer' ? '/account' : '/dashboard', { replace: true });
     }
-  }, [session, role, profile, isLoading, navigate]);
+  }, [session, role, isLoading, navigate]);
 
-  // Show loader if auth is working OR if we have a session but are waiting on the role string
-  if (isLoading || (session && !(role || profile?.role))) {
-    return <AuthLoader />;
-  }
-  
+  if (isLoading) return <AuthLoader />;
   return <Outlet />;
 }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Calendar, Clock, Users, ChevronRight, ChevronLeft, CheckCircle, Coffee, Loader2, Plus, Minus, ShoppingBag } from 'lucide-react';
 import { PublicLayout } from '@/components/layout/PublicLayout';
@@ -20,6 +20,7 @@ const PARTY_SIZES = [1, 2, 3, 4, 5, 6, 7, 8];
 export default function ReservationPage() {
   const { session, profile, isLoading: authLoading } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const [cafe, setCafe] = useState<Cafe | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -107,8 +108,9 @@ export default function ReservationPage() {
   const cartTotal = cart.reduce((sum, { item, qty }) => sum + ((item.price || 0) * qty), 0);
 
   const handleSubmit = async () => {
-    if (!session?.user) {
+    if (!profile) {
       toast.error('Please sign in to make a reservation.');
+      navigate(`/login?returnTo=/reservation`);
       return;
     }
     if (!cafe) return;
@@ -117,7 +119,7 @@ export default function ReservationPage() {
     try {
       const { data: resData, error: resError } = await supabase.from('reservations').insert({
         cafe_id: cafe.id,
-        user_id: session.user.id,
+        user_id: profile.id,
         guest_name: name,
         guest_email: email || null,
         guest_phone: phone || null,
@@ -129,14 +131,33 @@ export default function ReservationPage() {
 
       if (resError) throw resError;
 
+      // Send reservation confirmation email
+      await supabase.functions.invoke('send-email', {
+        body: {
+          type: 'reservation_confirmation',
+          email: profile.email || email,
+          data: {
+            cafeName: cafe.name,
+            customerName: profile.full_name || name,
+            reservationId: resData.id.substring(0, 8),
+            date,
+            time,
+            guests: partySize,
+            specialRequests: notes,
+          }
+        }
+      });
+
       if (wantsPreorder && cart.length > 0 && resData) {
         // Create order
         const subtotal = cartTotal;
         const tax = subtotal * 0.15; // 15% tax example
         const totalAmount = subtotal + tax;
+        const orderNumber = 'ORD-' + Math.random().toString(36).substring(2, 10).toUpperCase();
 
         const { data: orderData, error: orderError } = await supabase.from('orders').insert({
-          user_id: session.user.id,
+          order_number: orderNumber,
+          user_id: profile.id,
           cafe_id: cafe.id,
           reservation_id: resData.id,
           subtotal,
@@ -160,6 +181,23 @@ export default function ReservationPage() {
 
         const { error: itemsError } = await supabase.from('order_items').insert(itemsToInsert);
         if (itemsError) throw itemsError;
+
+        // Initialize Chapa
+        const initResponse = await supabase.functions.invoke('chapa-initialize', {
+          body: {
+            amount: totalAmount,
+            currency: 'ETB',
+            email: profile.email || email || 'customer@example.com',
+            first_name: profile.full_name || name || 'Customer',
+            tx_ref: orderNumber,
+            return_url: `${window.location.origin}/payment-success?tx_ref=${orderNumber}`,
+          }
+        });
+
+        if (initResponse.data?.checkout_url) {
+          window.location.href = initResponse.data.checkout_url;
+          return;
+        }
       }
 
       setIsConfirmed(true);

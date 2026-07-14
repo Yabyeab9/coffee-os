@@ -12,6 +12,9 @@ import BlogPostDetailPage from './pages/public/BlogPostDetailPage';
 import ContactPage from './pages/public/ContactPage';
 import PrivacyPage from './pages/public/PrivacyPage';
 
+import PaymentSuccessPage from '@/pages/public/PaymentSuccessPage';
+import PaymentFailurePage from '@/pages/public/PaymentFailurePage';
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 import LoginPage from './pages/LoginPage';
 
@@ -31,6 +34,7 @@ import SeoAdminPage from './pages/dashboard/SeoAdminPage';
 import UsersAdminPage from './pages/dashboard/UsersAdminPage';
 import SettingsPage from './pages/dashboard/SettingsPage';
 import AiStudioPage from './pages/dashboard/AiStudioPage';
+import StoreOpsAdminPage from './pages/dashboard/StoreOpsAdminPage';
 
 // ── Account Pages ─────────────────────────────────────────────────────────────
 import AccountDashboardPage from './pages/account/AccountDashboardPage';
@@ -70,6 +74,8 @@ export const publicRoutes: RouteConfig[] = [
   { name: 'Blog Post',   path: '/blog/:slug',   element: <BlogPostDetailPage />, public: true },
   { name: 'Contact',     path: '/contact',      element: <ContactPage />,       public: true },
   { name: 'Privacy',     path: '/privacy',      element: <PrivacyPage />,       public: true },
+  { name: 'Payment Success', path: '/payment-success', element: <PaymentSuccessPage />, public: true },
+  { name: 'Payment Failure', path: '/payment-failure', element: <PaymentFailurePage />, public: true },
 ];
 
 // ── Auth routes ───────────────────────────────────────────────────────────────
@@ -112,6 +118,7 @@ export const dashboardRoutes: RouteConfig[] = [
   { name: 'Users',         path: 'users',         element: <UsersAdminPage />, roles: ['admin', 'owner'] },
   { name: 'Settings',      path: 'settings',      element: <SettingsPage />,   roles: ['admin', 'owner', 'manager'] },
   { name: 'AI Studio',     path: 'ai-studio',     element: <AiStudioPage /> },
+  { name: 'Store Operations', path: 'store-ops',  element: <StoreOpsAdminPage /> },
 ];
 
 // Legacy flat export used by any remaining consumers

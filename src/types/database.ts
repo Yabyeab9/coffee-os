@@ -94,13 +94,16 @@ export interface MenuItem {
   id: string;
   cafe_id: string;
   category_id: string | null;
+  sku?: string | null;
   name: string;
   description: string | null;
   price: number | null;
+  sale_price?: number | null;
   currency: string;
   image_url: string | null;
   tags: string[];
   dietary: Record<string, boolean>;
+  modifier_groups?: Record<string, any> | null;
   is_available: boolean;
   is_featured: boolean;
   sort_order: number;

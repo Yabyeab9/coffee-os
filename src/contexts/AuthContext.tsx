@@ -13,7 +13,7 @@ interface AuthContextValue {
   isOwner: boolean;
   isEditor: boolean;
   isCustomer: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: string | null; profile?: any | null }>;
   signInWithGoogle: (redirectTo?: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -34,7 +34,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .eq('id', userId)
       .maybeSingle();
     setProfile(data);
-    console.log('Profile loaded:', data);
   }, []);
 
   const refreshProfile = useCallback(async () => {
@@ -53,35 +52,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    const {
-    data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
-
-      Promise.resolve().then(async () => {
-        if (session?.user?.id) {
-          await fetchProfile(session.user.id);
-        } else {
-          setProfile(null);
-        }
-
-        setIsLoading(false);
-      });
+      if (session?.user?.id) {
+        await fetchProfile(session.user.id);
+      } else {
+        setProfile(null);
+      }
+      setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, [fetchProfile]);
 
   const signIn = async (email: string, password: string) => {
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  return {
-    error: error?.message ?? null,
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error || !data.user) return { error: error?.message ?? null, profile: null };
+    const { data: profile } = await supabase.from('users').select('*').eq('id', data.user.id).maybeSingle();
+    return { error: null, profile };
   };
-};
 
   const signInWithGoogle = async (redirectTo?: string) => {
     const { data, error } = await supabase.auth.signInWithSSO({
