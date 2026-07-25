@@ -69,7 +69,7 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-heading font-semibold text-foreground">
           {greeting()}, {profile?.full_name?.split(' ')[0] ?? 'there'} 👋
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">Here's what's happening at Origin Coffee today.</p>
+        <p className="text-sm text-muted-foreground mt-1">Here's what's happening today.</p>
       </div>
 
       {/* Stat Cards */}

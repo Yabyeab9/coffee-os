@@ -13,7 +13,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
-const CAFE_SLUG = 'origin';
+import { getCafeSlug } from '@/lib/cafe-config';
+const CAFE_SLUG = getCafeSlug();
 const TIME_SLOTS = ['07:00','07:30','08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30'];
 const PARTY_SIZES = [1, 2, 3, 4, 5, 6, 7, 8];
 
@@ -117,90 +118,25 @@ export default function ReservationPage() {
     setIsSubmitting(true);
     
     try {
-      const { data: resData, error: resError } = await supabase.from('reservations').insert({
-        cafe_id: cafe.id,
-        user_id: profile.id,
-        guest_name: name,
-        guest_email: email || null,
-        guest_phone: phone || null,
-        party_size: partySize,
-        reservation_date: date,
-        reservation_time: time,
-        notes: notes || null,
-      }).select('id').single();
-
-      if (resError) throw resError;
-
-      // Send reservation confirmation email
-      await supabase.functions.invoke('send-email', {
+      const { data, error } = await supabase.functions.invoke('process-reservation', {
         body: {
-          type: 'reservation_confirmation',
-          email: profile.email || email,
-          data: {
-            cafeName: cafe.name,
-            customerName: profile.full_name || name,
-            reservationId: resData.id.substring(0, 8),
-            date,
-            time,
-            guests: partySize,
-            specialRequests: notes,
-          }
+          cafe_id: cafe.id,
+          reservation_date: date,
+          reservation_time: time,
+          guest_count: partySize,
+          guest_name: name,
+          guest_email: email || null,
+          guest_phone: phone || null,
+          notes: notes || null,
+          preorder_items: wantsPreorder && cart.length > 0 ? cart.map(c => ({ menu_item_id: c.item.id, quantity: c.qty })) : []
         }
       });
 
-      if (wantsPreorder && cart.length > 0 && resData) {
-        // Create order
-        const subtotal = cartTotal;
-        const tax = subtotal * 0.15; // 15% tax example
-        const totalAmount = subtotal + tax;
-        const orderNumber = 'ORD-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-        const { data: orderData, error: orderError } = await supabase.from('orders').insert({
-          order_number: orderNumber,
-          user_id: profile.id,
-          cafe_id: cafe.id,
-          reservation_id: resData.id,
-          subtotal,
-          tax,
-          service_fee: 0,
-          total_amount: totalAmount,
-          payment_status: 'unpaid',
-          order_status: 'pending'
-        }).select('id').single();
-
-        if (orderError) throw orderError;
-
-        // Create order items
-        const itemsToInsert = cart.map(c => ({
-          order_id: orderData.id,
-          menu_item_id: c.item.id,
-          quantity: c.qty,
-          unit_price: c.item.price || 0,
-          total_price: (c.item.price || 0) * c.qty
-        }));
-
-        const { error: itemsError } = await supabase.from('order_items').insert(itemsToInsert);
-        if (itemsError) throw itemsError;
-
-        // Initialize Chapa
-        const initResponse = await supabase.functions.invoke('chapa-initialize', {
-          body: {
-            amount: totalAmount,
-            currency: 'ETB',
-            email: profile.email || email || 'customer@example.com',
-            first_name: profile.full_name || name || 'Customer',
-            tx_ref: orderNumber,
-            return_url: `${window.location.origin}/payment-success?tx_ref=${orderNumber}`,
-          }
-        });
-
-        if (initResponse.data?.checkout_url) {
-          window.location.href = initResponse.data.checkout_url;
-          return;
-        }
-      }
-
-      setIsConfirmed(true);
+      // Successfully created reservation and verification code
+      navigate(`/reservation/verify/${data.reservation.id}`);
     } catch (error: any) {
       toast.error('Reservation failed', { description: error.message || String(error) });
     } finally {
@@ -224,7 +160,7 @@ export default function ReservationPage() {
               <strong className="text-foreground">{new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</strong> at{' '}
               <strong className="text-foreground">{time}</strong> has been received.
             </p>
-            <p className="text-sm text-muted-foreground mb-8">We'll confirm your booking shortly. See you at Origin!</p>
+            <p className="text-sm text-muted-foreground mb-8">We'll confirm your booking shortly. See you at {cafe.name}!</p>
             <Button onClick={() => { setIsConfirmed(false); setStep(1); setDate(''); setTime(''); setName(''); setEmail(''); setPhone(''); setNotes(''); }} variant="outline" className="border-border">
               Make Another Reservation
             </Button>
@@ -240,7 +176,7 @@ export default function ReservationPage() {
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
           <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">Book Your Visit</p>
           <h1 className="text-4xl font-heading font-semibold text-foreground mb-2">Reserve a Table</h1>
-          <p className="text-muted-foreground mb-8">Plan your experience at Origin Coffee. Walk-ins are also welcome.</p>
+          <p className="text-muted-foreground mb-8">Plan your experience at {cafe.name}. Walk-ins are also welcome.</p>
 
           {/* Step indicator */}
           <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2">

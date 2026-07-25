@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Coffee, Image, Users, BookOpen, Calendar,
   Settings, ChevronLeft, ChevronRight, Sparkles, LogOut,
   BarChart2, FileText, Megaphone, Globe, Menu, X, Bell,
-  ChevronDown, TrendingUp, ShoppingBag, CreditCard
+  ChevronDown, TrendingUp, ShoppingBag, CreditCard, QrCode
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -44,6 +44,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { label: 'Live Order Queue', href: '/dashboard/orders', icon: ShoppingBag, badge: 'Live' },
       { label: 'Menu Catalog', href: '/dashboard/menus', icon: Coffee },
       { label: 'Reservations', href: '/dashboard/reservations', icon: Calendar },
+      { label: 'QR Scanner', href: '/dashboard/scanner', icon: QrCode },
       { label: 'Store Operations', href: '/dashboard/store-ops', icon: Settings },
     ],
   },

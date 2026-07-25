@@ -50,7 +50,7 @@ export default function AccountLayout() {
             <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
               <Coffee className="w-4 h-4 text-primary" />
             </div>
-            <span className="font-heading font-semibold text-foreground">Coffee OS</span>
+            <span className="font-heading font-semibold text-foreground">Abat Coffee</span>
           </Link>
         </div>
 

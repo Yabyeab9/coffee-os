@@ -16,7 +16,7 @@ export default function OrdersPage() {
       if (!profile?.id) return;
       const { data } = await supabase
         .from('orders')
-        .select('*, order_items(*, menus(name)), cafes(name)')
+        .select('*, cafes(name)')
         .eq('user_id', profile.id)
         .order('created_at', { ascending: false });
       
@@ -65,7 +65,7 @@ export default function OrdersPage() {
                   <div className="mt-3 space-y-1">
                     {order.order_items?.map((item: any) => (
                       <p key={item.id} className="text-sm text-foreground">
-                        <span className="text-muted-foreground">{item.quantity}x</span> {item.menus?.name || 'Item'}
+                        <span className="text-muted-foreground">{item.quantity}x</span> {item.menu_items?.name || 'Item'}
                       </p>
                     ))}
                   </div>

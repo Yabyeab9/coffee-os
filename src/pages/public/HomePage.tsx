@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { getCafeBySlug, getMenuItems, getGallery, getTestimonials, getBlogPosts, getAnnouncements } from '@/lib/api';
 import type { Cafe, MenuItem, GalleryItem, Testimonial, BlogPost, Announcement } from '@/types/database';
 
-const CAFE_SLUG = 'origin';
+import { getCafeSlug } from '@/lib/cafe-config';
+const CAFE_SLUG = getCafeSlug();
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -95,7 +96,7 @@ export default function HomePage() {
             className="max-w-2xl"
           >
             <Badge className="mb-6 bg-primary/15 text-primary border-primary/30 font-medium">
-              Specialty Coffee · Addis Ababa
+              Specialty Coffee · {cafe.city || 'Your City'}
             </Badge>
             <h1 className="text-5xl md:text-7xl font-heading font-semibold text-foreground leading-none tracking-tight mb-6">
               {cafe.name?.split(' ')[0]}<br />
@@ -124,49 +125,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* FEATURES BENTO */}
-      <section className="section-pad max-w-7xl mx-auto px-4 md:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-12"
-        >
-          <h2 className="text-3xl md:text-4xl font-heading font-semibold text-foreground mb-3">
-            Crafted with Intent
-          </h2>
-          <p className="text-muted-foreground max-w-lg mx-auto">
-            Every element of Origin Coffee is designed around one thing: the perfect cup.
-          </p>
-        </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[
-            { icon: Leaf, title: 'Single-Origin Sourcing', desc: 'Direct from Ethiopian highland farms. Every lot traceable to its cooperative.', color: 'text-primary' },
-            { icon: Flame, title: 'Artisan Roasting', desc: 'Small-batch roasted to highlight each bean\'s unique terroir and character.', color: 'text-accent' },
-            { icon: Coffee, title: 'Expert Brewing', desc: 'V60, AeroPress, espresso — every method executed with obsessive precision.', color: 'text-info' },
-            { icon: Clock, title: 'Ethiopian Ceremony', desc: 'Authentic Buna ceremony experience. A cultural journey in every session.', color: 'text-warning' },
-            { icon: Star, title: 'Award-Winning Space', desc: 'A destination for coffee lovers. Designed for comfort, community, and craft.', color: 'text-primary' },
-            { icon: BookOpen, title: 'Coffee Education', desc: 'Monthly cupping sessions and brewing workshops for enthusiasts.', color: 'text-accent' },
-          ].map((f, i) => (
-            <motion.div
-              key={f.title}
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: i * 0.08 }}
-              className="glass rounded-xl p-6 card-hover"
-            >
-              <div className={`w-10 h-10 rounded-lg bg-card flex items-center justify-center mb-4 border border-border/50`}>
-                <f.icon className={`w-5 h-5 ${f.color}`} />
-              </div>
-              <h3 className="font-heading font-semibold text-foreground mb-2">{f.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
-            </motion.div>
-          ))}
-        </div>
-      </section>
 
       {/* FEATURED MENU */}
       {featuredItems.length > 0 && (

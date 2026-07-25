@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { getRedirectPathByRole } from '@/lib/auth-helpers';
 import { Loader2 } from 'lucide-react';
 
 function AuthLoader() {
@@ -37,7 +38,7 @@ export function AuthGuard({ roles, enforceDashboard, enforceAccount }: { roles?:
     }
 
     if (roles && role && !roles.includes(role)) {
-      navigate(role === 'customer' ? '/account' : '/dashboard', { replace: true });
+      navigate(getRedirectPathByRole(role), { replace: true });
     }
   }, [session, role, isLoading, navigate, location.pathname, roles, enforceDashboard, enforceAccount]);
 
@@ -57,7 +58,7 @@ export function PublicOnlyGuard() {
 
   useEffect(() => {
     if (!isLoading && session) {
-      navigate(role === 'customer' ? '/account' : '/dashboard', { replace: true });
+      navigate(getRedirectPathByRole(role), { replace: true });
     }
   }, [session, role, isLoading, navigate]);
 

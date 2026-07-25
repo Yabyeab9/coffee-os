@@ -1,12 +1,58 @@
 import { useQuery } from '@tanstack/react-query';
-import { getCafeBySlug, getMenuItems, getMenuCategories, getGallery, getTestimonials, getBlogPosts, getAnnouncements } from '@/lib/api';
+import { 
+  getCafeBySlug, 
+  getMenuItems, 
+  getMenuCategories, 
+  getGallery, 
+  getTestimonials, 
+  getBlogPosts, 
+  getAnnouncements,
+  getDashboardStats,
+  getReservationTrend,
+  getReservations,
+  getOrders
+} from '@/lib/api';
 
-const CAFE_SLUG = 'origin';
+import { getCafeSlug } from '@/lib/cafe-config';
+const CAFE_SLUG = getCafeSlug();
 
 export function useCafe() {
+  const CAFE_SLUG = getCafeSlug();
   return useQuery({
     queryKey: ['cafe', CAFE_SLUG],
     queryFn: () => getCafeBySlug(CAFE_SLUG),
+  });
+}
+
+export function useDashboardStats(cafeId?: string) {
+  return useQuery({
+    queryKey: ['dashboardStats', cafeId],
+    queryFn: () => getDashboardStats(cafeId!),
+    enabled: !!cafeId,
+  });
+}
+
+export function useReservationTrend(cafeId?: string) {
+  return useQuery({
+    queryKey: ['reservationTrend', cafeId],
+    queryFn: () => getReservationTrend(cafeId!),
+    enabled: !!cafeId,
+  });
+}
+
+export function useReservationsList(cafeId?: string, opts?: any) {
+  return useQuery({
+    queryKey: ['reservations', cafeId, opts],
+    queryFn: () => getReservations(cafeId!, opts),
+    enabled: !!cafeId,
+  });
+}
+
+export function useOrdersList(cafeId?: string) {
+  return useQuery({
+    queryKey: ['orders', cafeId],
+    queryFn: () => getOrders(cafeId!),
+    enabled: !!cafeId,
   });
 }
 
@@ -50,10 +96,10 @@ export function useAnnouncements(cafeId?: string) {
   });
 }
 
-export function usePosts(cafeId?: string) {
+export function usePosts(cafeId?: string, opts?: { status?: string; page?: number }) {
   return useQuery({
-    queryKey: ['posts', cafeId],
-    queryFn: () => getBlogPosts(cafeId!, { status: 'published', page: 1 }),
+    queryKey: ['posts', cafeId, opts],
+    queryFn: () => getBlogPosts(cafeId!, opts),
     enabled: !!cafeId,
   });
 }

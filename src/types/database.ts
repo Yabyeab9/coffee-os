@@ -2,7 +2,7 @@
 // Auto-derived from Supabase schema. Do not hardcode values.
 
 export type UserRole = 'admin' | 'owner' | 'manager' | 'editor' | 'customer';
-export type ReservationStatus = 'pending' | 'confirmed' | 'cancelled' | 'no_show' | 'completed';
+export type ReservationStatus = 'pending' | 'pending_verification' | 'pending_payment' | 'paid' | 'confirmed' | 'checked_in' | 'completed' | 'cancelled' | 'refunded' | 'no_show';
 export type ContentStatus = 'draft' | 'published';
 export type TestimonialStatus = 'pending' | 'approved' | 'rejected';
 export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded';
@@ -158,6 +158,7 @@ export interface BlogPost {
 export interface Reservation {
   id: string;
   cafe_id: string;
+  user_id?: string;
   guest_name: string;
   guest_email: string | null;
   guest_phone: string | null;
@@ -167,9 +168,15 @@ export interface Reservation {
   status: ReservationStatus;
   notes: string | null;
   internal_notes: string | null;
+  reservation_code?: string | null;
+  qr_token?: string | null;
+  payment_status?: string | null;
+  check_in_at?: string | null;
+  completed_at?: string | null;
   created_at: string;
   updated_at: string;
 }
+
 
 export interface OpeningHours {
   id: string;
@@ -267,17 +274,14 @@ export interface AiChatMessage {
 
 export interface Payment {
   id: string;
-  cafe_id: string;
-  user_id: string | null;
-  order_id: string | null;
-  subscription_id: string | null;
   reservation_id: string | null;
-  provider: PaymentProvider;
+  order_id: string | null;
+  provider: string;
+  provider_reference: string | null;
   amount: number;
   currency: string;
-  status: PaymentStatus;
-  provider_ref: string | null;
-  metadata: Record<string, unknown>;
+  status: string;
+  metadata: Record<string, any>;
   created_at: string;
   updated_at: string;
 }

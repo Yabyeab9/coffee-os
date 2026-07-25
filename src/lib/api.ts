@@ -390,3 +390,19 @@ export async function getReservationTrend(cafeId: string): Promise<{ date: strin
 
   return Object.entries(counts).map(([date, count]) => ({ date, count }));
 }
+
+export async function getOrders(cafeId: string) {
+  return await supabase
+    .from('orders')
+    .select('*, profiles(full_name, email), order_items(*, menus(name))')
+    .eq('cafe_id', cafeId)
+    .order('created_at', { ascending: false });
+}
+
+export async function updateOrderStatus(id: string, status: string) {
+  const { error } = await supabase
+    .from('orders')
+    .update({ status })
+    .eq('id', id);
+  if (error) throw error;
+}

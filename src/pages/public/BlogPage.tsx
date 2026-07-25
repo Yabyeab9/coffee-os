@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { getCafeBySlug, getBlogPosts, getAnnouncements } from '@/lib/api';
 import type { Cafe, BlogPost, Announcement } from '@/types/database';
 
-const CAFE_SLUG = 'origin';
+import { getCafeSlug } from '@/lib/cafe-config';
+const CAFE_SLUG = getCafeSlug();
 
 export default function BlogPage() {
   const [cafe, setCafe] = useState<Cafe | null>(null);

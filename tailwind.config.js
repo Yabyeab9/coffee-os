@@ -93,9 +93,9 @@ export default {
                 sm: 'calc(var(--radius) - 4px)'
             },
             fontFamily: {
-                heading: ['Montserrat', 'sans-serif'],
-                body: ['Montserrat', 'sans-serif'],
-                sans: ['Montserrat', 'sans-serif'],
+                heading: ['Playfair Display', 'serif'],
+                body: ['Inter', 'sans-serif'],
+                sans: ['Inter', 'sans-serif'],
             },
             backgroundImage: {
                 'gradient-primary': 'var(--gradient-primary)',

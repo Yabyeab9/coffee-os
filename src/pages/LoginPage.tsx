@@ -3,6 +3,7 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Coffee, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { getRedirectPathByRole } from '@/lib/auth-helpers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,27 +21,9 @@ export default function LoginPage() {
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const {
-  signIn,
-  signUp,
-  signInWithGoogle,
-  profile,
-   role,
-  isLoading: authLoading
-} = useAuth();
-  
+  const { signIn, signUp, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
-React.useEffect(() => {
-  if (authLoading || !profile) return;
 
-  const destination =
-    returnTo ||
-    (profile.role === 'customer'
-      ? '/account'
-      : '/dashboard');
-
-  navigate(destination, { replace: true });
-}, [profile, authLoading, navigate, returnTo]);
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     const dest = returnTo || '/account';
@@ -58,11 +41,13 @@ React.useEffect(() => {
 
     try {
       if (mode === 'login') {
-        const { error } = await signIn(email, password);
+        const { error, profile } = await signIn(email, password);
         if (error) {
           toast.error('Sign-in failed', { description: error });
         } else {
           toast.success('Welcome back!');
+          const dest = returnTo || getRedirectPathByRole(profile?.role);
+          navigate(dest);
         }
       } else {
         if (!fullName) { toast.error('Please enter your full name'); return; }
@@ -97,7 +82,7 @@ React.useEffect(() => {
           </div>
           <div>
             <h1 className="text-4xl font-heading font-semibold text-foreground leading-tight mb-4">
-              Your café.<br />
+              Abat café.<br />
               <span className="gradient-text">Fully elevated.</span>
             </h1>
             <p className="text-muted-foreground leading-relaxed max-w-sm">

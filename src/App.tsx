@@ -23,6 +23,7 @@ import MenuPage from '@/pages/public/MenuPage';
 import GalleryPage from '@/pages/public/GalleryPage';
 import AboutPage from '@/pages/public/AboutPage';
 import ReservationPage from '@/pages/public/ReservationPage';
+import ReservationVerifyPage from '@/pages/public/ReservationVerifyPage';
 import BlogPage from '@/pages/public/BlogPage';
 import BlogPostDetailPage from '@/pages/public/BlogPostDetailPage';
 import ContactPage from '@/pages/public/ContactPage';
@@ -67,6 +68,7 @@ import PaymentsAdminPage from '@/pages/dashboard/PaymentsAdminPage';
 
 import GrowthDashboardPage from '@/pages/dashboard/GrowthDashboardPage';
 import PromotionsAdminPage from '@/pages/dashboard/PromotionsAdminPage';
+import ReservationScannerPage from '@/pages/dashboard/ReservationScannerPage';
 
 /** Renders DashboardLayout wrapping nested <Route> children via Outlet */
 function DashboardShell() {
@@ -94,6 +96,7 @@ const App: React.FC = () => {
           <Route path="/gallery" element={<GalleryPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/reservation" element={<ReservationPage />} />
+          <Route path="/reservation/verify/:reservationId" element={<ReservationVerifyPage />} />
           <Route path="/blog" element={<BlogPage />} />
           <Route path="/blog/:slug" element={<BlogPostDetailPage />} />
           <Route path="/contact" element={<ContactPage />} />
@@ -139,6 +142,7 @@ const App: React.FC = () => {
                 <Route path="reservations" element={<ReservationsAdminPage />} />
                 <Route path="customers" element={<CustomersAdminPage />} />
                 <Route path="payments" element={<PaymentsAdminPage />} />
+                <Route path="scanner" element={<ReservationScannerPage />} />
                 <Route path="announcements" element={<AnnouncementsPage />} />
                 <Route path="seo" element={<SeoAdminPage />} />
                 <Route path="ai-studio" element={<AiStudioPage />} />

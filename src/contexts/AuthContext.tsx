@@ -43,26 +43,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [session, fetchProfile]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session?.user?.id) {
-        fetchProfile(session.user.id).finally(() => setIsLoading(false));
-      } else {
-        setIsLoading(false);
-      }
-    });
+    let mounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      if (session?.user?.id) {
-        await fetchProfile(session.user.id);
+    // Use a single initialization path
+    const initializeAuth = async () => {
+      try {
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        
+        if (mounted) {
+          setSession(initialSession);
+          if (initialSession?.user?.id) {
+            await fetchProfile(initialSession.user.id);
+          } else {
+            setProfile(null);
+          }
+        }
+      } catch (err) {
+        console.error('Auth initialization error:', err);
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    initializeAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      if (!mounted) return;
+      
+      // Only react to actual auth state changes, ignore INITIAL_SESSION since we handled it
+      if (event === 'INITIAL_SESSION') return;
+      
+      setSession(currentSession);
+      if (currentSession?.user?.id) {
+        await fetchProfile(currentSession.user.id);
       } else {
         setProfile(null);
       }
       setIsLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [fetchProfile]);
 
   const signIn = async (email: string, password: string) => {
@@ -73,11 +99,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signInWithGoogle = async (redirectTo?: string) => {
-    const { data, error } = await supabase.auth.signInWithSSO({
-      domain: 'miaoda-gg.com',
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
       options: { redirectTo: redirectTo ?? `${window.location.origin}/account` },
     });
-    if (data?.url) window.open(data.url, '_self');
     return { error: error?.message ?? null };
   };
 

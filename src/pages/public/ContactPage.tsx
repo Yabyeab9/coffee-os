@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { MapPin, Phone, Mail, Clock, Send, Loader2, CheckCircle } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, Send, Loader2, CheckCircle, Coffee } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,22 +8,31 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { PublicLayout } from '@/components/layout/PublicLayout';
+import { getCafeBySlug } from '@/lib/api';
+import { getCafeSlug } from '@/lib/cafe-config';
+import type { Cafe } from '@/types/database';
 
-const CAFE_INFO = {
-  address: 'Bole Road, Friendship Square, Addis Ababa, Ethiopia',
-  phone: '+251 91 123 4567',
-  email: 'hello@origincoffee.et',
-  hours: [
-    { day: 'Monday – Friday', time: '7:00 AM – 10:00 PM' },
-    { day: 'Saturday', time: '8:00 AM – 11:00 PM' },
-    { day: 'Sunday', time: '9:00 AM – 9:00 PM' },
-  ],
-};
+const DEFAULT_HOURS = [
+  { day: 'Monday – Friday', time: '7:00 AM – 10:00 PM' },
+  { day: 'Saturday', time: '8:00 AM – 11:00 PM' },
+  { day: 'Sunday', time: '9:00 AM – 9:00 PM' },
+];
 
 export default function ContactPage() {
+  const [cafe, setCafe] = useState<Cafe | null>(null);
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      const c = await getCafeBySlug(getCafeSlug());
+      setCafe(c || null);
+      setIsLoading(false);
+    }
+    load();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,113 +45,139 @@ export default function ContactPage() {
     });
     setSending(false);
     if (error) {
-      // Non-blocking: show success anyway (message routing is a backend concern)
+      // Non-blocking
     }
     setSent(true);
-    toast.success("Message sent! We'll respond within 24 hours.");
   };
 
+  if (isLoading) {
+    return <div className="min-h-screen bg-background flex items-center justify-center"><Coffee className="w-6 h-6 text-primary animate-pulse" /></div>;
+  }
+
+  if (!cafe) {
+    return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Café not found.</p></div>;
+  }
+
   return (
-    <PublicLayout>
-      {/* Hero */}
-      <section className="py-20 px-4 text-center">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl mx-auto">
-          <p className="text-sm font-semibold text-primary tracking-widest uppercase mb-4">Contact Us</p>
-          <h1 className="text-4xl md:text-5xl font-heading font-bold text-foreground mb-4 text-balance">We'd Love to Hear from You</h1>
-          <p className="text-lg text-muted-foreground">Whether it's a question, a reservation, or just to say hello — our team is here.</p>
-        </motion.div>
+    <PublicLayout cafe={cafe}>
+      {/* HEADER */}
+      <section className="bg-background py-16 md:py-24 border-b border-border/40">
+        <div className="max-w-7xl mx-auto px-4 md:px-8">
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl">
+            <h1 className="text-4xl md:text-5xl font-heading font-semibold text-foreground mb-4">Get in Touch</h1>
+            <p className="text-muted-foreground text-lg">We'd love to hear from you. Reach out for reservations, event inquiries, or simply to talk coffee.</p>
+          </motion.div>
+        </div>
       </section>
 
-      <section className="max-w-6xl mx-auto px-4 pb-24 grid grid-cols-1 lg:grid-cols-2 gap-12">
-        {/* Contact Form */}
-        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
-          {sent ? (
-            <div className="glass rounded-2xl p-10 flex flex-col items-center justify-center text-center h-full min-h-[400px]">
-              <CheckCircle className="w-12 h-12 text-primary mb-4" />
-              <h2 className="text-xl font-heading font-semibold text-foreground mb-2">Message Received!</h2>
-              <p className="text-muted-foreground mb-6">We'll get back to you within 24 hours. Thank you for reaching out.</p>
-              <Button onClick={() => { setSent(false); setForm({ name: '', email: '', subject: '', message: '' }); }} variant="outline" className="border-border">
-                Send Another Message
-              </Button>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="glass rounded-2xl p-8 space-y-5">
-              <h2 className="text-xl font-heading font-semibold text-foreground">Send a Message</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-sm text-muted-foreground">Full Name *</Label>
-                  <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Your name" className="bg-input border-border" required />
+      <section className="py-16 md:py-24 max-w-7xl mx-auto px-4 md:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24">
+          
+          {/* INFO SIDE */}
+          <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
+            <div className="space-y-10">
+              
+              <div className="flex gap-4">
+                <div className="w-12 h-12 rounded-xl bg-card border border-border/50 flex items-center justify-center shrink-0">
+                  <MapPin className="w-5 h-5 text-primary" />
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-sm text-muted-foreground">Email *</Label>
-                  <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="your@email.com" className="bg-input border-border" required />
+                <div>
+                  <h3 className="font-heading font-semibold text-foreground mb-1">Visit Us</h3>
+                  <p className="text-muted-foreground">{cafe.address || 'Address pending'}, {cafe.city || ''}</p>
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm text-muted-foreground">Subject</Label>
-                <Input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} placeholder="What's it about?" className="bg-input border-border" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm text-muted-foreground">Message *</Label>
-                <Textarea value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} placeholder="Tell us what's on your mind…" className="bg-input border-border" rows={5} required />
-              </div>
-              <Button type="submit" disabled={sending} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-                {sending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-                {sending ? 'Sending…' : 'Send Message'}
-              </Button>
-            </form>
-          )}
-        </motion.div>
 
-        {/* Info */}
-        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="space-y-6">
-          <div className="glass rounded-2xl p-6 space-y-4">
-            <h2 className="text-lg font-heading font-semibold text-foreground">Visit Us</h2>
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <MapPin className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                <p className="text-sm text-muted-foreground">{CAFE_INFO.address}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <Phone className="w-4 h-4 text-primary shrink-0" />
-                <a href={`tel:${CAFE_INFO.phone}`} className="text-sm text-muted-foreground hover:text-foreground transition-colors">{CAFE_INFO.phone}</a>
-              </div>
-              <div className="flex items-center gap-3">
-                <Mail className="w-4 h-4 text-primary shrink-0" />
-                <a href={`mailto:${CAFE_INFO.email}`} className="text-sm text-muted-foreground hover:text-foreground transition-colors">{CAFE_INFO.email}</a>
-              </div>
-            </div>
-          </div>
-
-          <div className="glass rounded-2xl p-6 space-y-4">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-primary" />
-              <h2 className="text-lg font-heading font-semibold text-foreground">Opening Hours</h2>
-            </div>
-            <div className="space-y-2">
-              {CAFE_INFO.hours.map(h => (
-                <div key={h.day} className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{h.day}</span>
-                  <span className="text-foreground font-medium">{h.time}</span>
+              <div className="flex gap-4">
+                <div className="w-12 h-12 rounded-xl bg-card border border-border/50 flex items-center justify-center shrink-0">
+                  <Phone className="w-5 h-5 text-primary" />
                 </div>
-              ))}
-            </div>
-          </div>
+                <div>
+                  <h3 className="font-heading font-semibold text-foreground mb-1">Call Us</h3>
+                  <p className="text-muted-foreground">{cafe.phone || 'Phone pending'}</p>
+                </div>
+              </div>
 
-          {/* Map */}
-          <div className="glass rounded-2xl overflow-hidden aspect-[4/3]">
-            <iframe
-              title="Origin Coffee Location"
-              width="100%"
-              height="100%"
-              frameBorder="0"
-              style={{ border: 0 }}
-              referrerPolicy="no-referrer-when-downgrade"
-              src="https://www.google.com/maps/embed/v1/place?key=AIzaSyB_LJOYJL-84SMuxNB7LtRGhxEQLjswvy0&q=Bole+Road+Addis+Ababa+Ethiopia&language=en&region=ET"
-              allowFullScreen
-            />
-          </div>
-        </motion.div>
+              <div className="flex gap-4">
+                <div className="w-12 h-12 rounded-xl bg-card border border-border/50 flex items-center justify-center shrink-0">
+                  <Mail className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-heading font-semibold text-foreground mb-1">Email Us</h3>
+                  <p className="text-muted-foreground">{cafe.email || 'Email pending'}</p>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-border/40">
+                <div className="flex items-center gap-3 mb-6">
+                  <Clock className="w-5 h-5 text-primary" />
+                  <h3 className="font-heading font-semibold text-foreground">Opening Hours</h3>
+                </div>
+                <div className="space-y-3">
+                  {DEFAULT_HOURS.map((h) => (
+                    <div key={h.day} className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{h.day}</span>
+                      <span className="font-medium text-foreground">{h.time}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          </motion.div>
+
+          {/* FORM SIDE */}
+          <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
+            {sent ? (
+              <div className="glass rounded-2xl p-10 flex flex-col items-center justify-center text-center h-full min-h-[400px]">
+                <CheckCircle className="w-12 h-12 text-primary mb-4" />
+                <h2 className="text-xl font-heading font-semibold text-foreground mb-2">Message Received!</h2>
+                <p className="text-muted-foreground mb-6">We'll get back to you within 24 hours. Thank you for reaching out.</p>
+                <Button onClick={() => { setSent(false); setForm({ name: '', email: '', subject: '', message: '' }); }} variant="outline" className="border-border hover:bg-secondary">
+                  Send Another Message
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="glass rounded-2xl p-8 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-sm text-muted-foreground">Full Name *</Label>
+                    <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Your name" className="bg-background/50 border-border/50" required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm text-muted-foreground">Email *</Label>
+                    <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="your@email.com" className="bg-background/50 border-border/50" required />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm text-muted-foreground">Subject</Label>
+                  <Input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} placeholder="What's it about?" className="bg-background/50 border-border/50" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm text-muted-foreground">Message *</Label>
+                  <Textarea value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} placeholder="Tell us what's on your mind…" className="bg-background/50 border-border/50" rows={5} required />
+                </div>
+                <Button type="submit" disabled={sending} className="w-full bg-primary text-primary-foreground hover:bg-primary/90 glow-primary">
+                  {sending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                  {sending ? 'Sending…' : 'Send Message'}
+                </Button>
+              </form>
+            )}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* MAP */}
+      <section className="h-[400px] w-full bg-secondary">
+        <iframe
+          src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyB_LJOYJL-84SMuxNB7LtRGhxEQLjswvy0&q=${encodeURIComponent(cafe.name + ' ' + cafe.city)}`}
+          width="100%"
+          height="100%"
+          style={{ border: 0 }}
+          allowFullScreen
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          title={`${cafe.name || 'Cafe'} Location`}
+        ></iframe>
       </section>
     </PublicLayout>
   );
