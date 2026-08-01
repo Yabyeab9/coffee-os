@@ -6,6 +6,8 @@ import type { Promotion } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
+import { toast } from 'sonner';
+
 export default function PromotionsAdminPage() {
   const { profile, cafeId } = useAuth();
   const [promotions, setPromotions] = useState<Promotion[]>([]);
@@ -26,7 +28,7 @@ export default function PromotionsAdminPage() {
           <h1 className="text-3xl font-heading font-semibold text-foreground mb-2">Smart Promotions</h1>
           <p className="text-muted-foreground">Manage campaigns to increase retention and sales.</p>
         </div>
-        <Button onClick={() => {}} className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90">
+        <Button onClick={() => toast.info('Promotion builder coming soon.')} className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90">
           <Plus className="w-4 h-4 mr-2" /> New Campaign
         </Button>
       </div>
@@ -36,7 +38,7 @@ export default function PromotionsAdminPage() {
           <div className="py-20 text-center text-muted-foreground glass rounded-xl border border-border border-dashed">
             <Megaphone className="w-12 h-12 mx-auto mb-4 opacity-20" />
             <p>No active promotions.</p>
-            <Button variant="outline" onClick={() => {}} className="mt-4 border-border text-primary hover:bg-secondary">
+            <Button variant="outline" onClick={() => toast.info('Promotion builder coming soon.')} className="mt-4 border-border text-primary hover:bg-secondary">
               Create Your First Campaign
             </Button>
           </div>

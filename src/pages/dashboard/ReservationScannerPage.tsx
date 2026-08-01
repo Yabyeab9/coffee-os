@@ -27,7 +27,7 @@ export default function ReservationScannerPage() {
         *,
         orders(
           id, total_amount, payment_status,
-          order_items(quantity, menu_items(name))
+          order_items(quantity, menus(name))
         )
       `)
       .eq('cafe_id', cafeId)
@@ -149,7 +149,7 @@ export default function ReservationScannerPage() {
                 <ul className="text-sm space-y-1 mb-3">
                   {reservation.orders[0].order_items?.map((item: any, i: number) => (
                     <li key={i} className="flex justify-between">
-                      <span>{item.quantity}x {item.menu_items?.name}</span>
+                      <span>{item.quantity}x {item.menus?.name}</span>
                     </li>
                   ))}
                 </ul>

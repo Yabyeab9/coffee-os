@@ -33,7 +33,6 @@ export default function ReservationPage() {
 
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isConfirmed, setIsConfirmed] = useState(false);
 
   // Form state
   const [date, setDate] = useState('');
@@ -109,66 +108,86 @@ export default function ReservationPage() {
   const cartTotal = cart.reduce((sum, { item, qty }) => sum + ((item.price || 0) * qty), 0);
 
   const handleSubmit = async () => {
-    if (!profile) {
-      toast.error('Please sign in to make a reservation.');
-      navigate(`/login?returnTo=/reservation`);
-      return;
-    }
-    if (!cafe) return;
-    setIsSubmitting(true);
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('process-reservation', {
-        body: {
-          cafe_id: cafe.id,
-          reservation_date: date,
-          reservation_time: time,
-          guest_count: partySize,
-          guest_name: name,
-          guest_email: email || null,
-          guest_phone: phone || null,
-          notes: notes || null,
-          preorder_items: wantsPreorder && cart.length > 0 ? cart.map(c => ({ menu_item_id: c.item.id, quantity: c.qty })) : []
-        }
-      });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      // Successfully created reservation and verification code
-      navigate(`/reservation/verify/${data.reservation.id}`);
-    } catch (error: any) {
-      toast.error('Reservation failed', { description: error.message || String(error) });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (!cafe) return <div className="min-h-screen bg-background flex items-center justify-center"><Coffee className="w-6 h-6 text-primary animate-pulse" /></div>;
-
-  if (isConfirmed) {
-    return (
-      <PublicLayout cafe={cafe} announcements={announcements}>
-        <section className="section-pad max-w-lg mx-auto px-4 text-center">
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
-            <div className="w-20 h-20 rounded-full bg-primary/15 flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="w-10 h-10 text-primary" />
-            </div>
-            <h1 className="text-3xl font-heading font-semibold text-foreground mb-3">You're all set!</h1>
-            <p className="text-muted-foreground mb-4">
-              Your reservation for <strong className="text-foreground">{partySize} guest{partySize > 1 ? 's' : ''}</strong> on{' '}
-              <strong className="text-foreground">{new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</strong> at{' '}
-              <strong className="text-foreground">{time}</strong> has been received.
-            </p>
-            <p className="text-sm text-muted-foreground mb-8">We'll confirm your booking shortly. See you at {cafe.name}!</p>
-            <Button onClick={() => { setIsConfirmed(false); setStep(1); setDate(''); setTime(''); setName(''); setEmail(''); setPhone(''); setNotes(''); }} variant="outline" className="border-border">
-              Make Another Reservation
-            </Button>
-          </motion.div>
-        </section>
-      </PublicLayout>
-    );
+  if (!profile) {
+    toast.error('Please sign in to make a reservation.');
+    navigate(`/login?returnTo=/reservation`);
+    return;
   }
+
+  if (!cafe) return;
+
+  setIsSubmitting(true);
+
+  try {
+    const { data, error } = await supabase.functions.invoke(
+      'process-reservation',
+        {
+    body: {
+      cafe_id: cafe.id,
+      reservation_date: date,
+      reservation_time: time,
+      guest_count: partySize,
+      guest_name: name,
+      guest_email: email || null,
+      guest_phone: phone || null,
+      notes: notes || null,
+      preorder_items:
+        wantsPreorder && cart.length > 0
+          ? cart.map((c) => ({
+              menu_item_id: c.item.id,
+              quantity: c.qty,
+            }))
+          : [],
+    },
+  }
+);
+
+    console.log('process-reservation response:', data);
+    console.log('process-reservation error:', error);
+
+    if (error) {
+      throw new Error(error.message || 'Failed to create reservation.');
+    }
+
+    if (!data) {
+      throw new Error('No response received from reservation service.');
+    }
+
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    // IMPORTANT: verify the reservation exists before navigating
+    if (!data.reservation_id) {
+      console.error('Unexpected reservation response:', data);
+
+      throw new Error(
+        'Reservation was created, but the reservation ID was not returned.'
+      );
+    }
+
+    const reservationId = data.reservation_id;
+
+    console.log('Reservation created:', reservationId);
+
+    toast.success('Reservation created!', {
+      description: 'Check your email for the verification code.',
+    });
+
+    navigate(`/reservation/verify/${reservationId}`);
+  } catch (error: any) {
+    console.error('Reservation submission failed:', error);
+
+    toast.error('Reservation failed', {
+      description:
+        error?.message ||
+        'Something went wrong while creating your reservation.',
+    });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+  if (!cafe) return <div className="min-h-screen bg-background flex items-center justify-center"><Coffee className="w-6 h-6 text-primary animate-pulse" /></div>;
 
   return (
     <PublicLayout cafe={cafe} announcements={announcements}>

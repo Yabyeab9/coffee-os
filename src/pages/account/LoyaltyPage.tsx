@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { Award, Gift, ArrowRight } from 'lucide-react';
 import type { LoyaltyPoint, LoyaltyTransaction } from '@/types/database';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 export default function LoyaltyPage() {
   const { profile } = useAuth();
@@ -37,7 +38,7 @@ export default function LoyaltyPage() {
             <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-1">{loyalty?.tier || 'Bronze'} Member</p>
             <h2 className="text-4xl font-heading font-bold text-foreground">{loyalty?.points || 0} <span className="text-xl text-muted-foreground font-medium">pts</span></h2>
           </div>
-          <Button onClick={() => {}} className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90">
+          <Button onClick={() => toast.info('Points can be redeemed automatically during checkout!')} className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90">
             Redeem Rewards <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
         </div>

@@ -35,6 +35,14 @@ import UsersAdminPage from './pages/dashboard/UsersAdminPage';
 import SettingsPage from './pages/dashboard/SettingsPage';
 import AiStudioPage from './pages/dashboard/AiStudioPage';
 import StoreOpsAdminPage from './pages/dashboard/StoreOpsAdminPage';
+import LoyaltyAdminPage from './pages/dashboard/LoyaltyAdminPage';
+import QrScannerPage from './pages/dashboard/QrScannerPage';
+import AiManagerPage from './pages/dashboard/AiManagerPage';
+import ForecastsPage from './pages/dashboard/ForecastsPage';
+import SmartPromosPage from './pages/dashboard/SmartPromosPage';
+import IntelligencePage from './pages/dashboard/IntelligencePage';
+import ExecDashboardsPage from './pages/dashboard/ExecDashboardsPage';
+import ReportsHealthPage from './pages/dashboard/ReportsHealthPage';
 
 // ── Account Pages ─────────────────────────────────────────────────────────────
 import AccountDashboardPage from './pages/account/AccountDashboardPage';
@@ -49,6 +57,11 @@ import SubscriptionsPage from './pages/account/SubscriptionsPage';
 import AiRecommendationsPage from './pages/account/AiRecommendationsPage';
 import ReferralsPage from './pages/account/ReferralsPage';
 import StreaksPage from './pages/account/StreaksPage';
+import MembershipCardPage from './pages/account/MembershipCardPage';
+import WalletPage from './pages/account/WalletPage';
+import ReceiptsPage from './pages/account/ReceiptsPage';
+import AchievementsPage from './pages/account/AchievementsPage';
+import LeaderboardPage from './pages/account/LeaderboardPage';
 
 import PromotionsAdminPage from './pages/dashboard/PromotionsAdminPage';
 import GrowthDashboardPage from './pages/dashboard/GrowthDashboardPage';
@@ -89,7 +102,12 @@ export const accountRoutes: RouteConfig[] = [
   { name: 'Orders', path: 'orders', element: <OrdersPage /> },
   { name: 'Reservations', path: 'reservations', element: <AccountReservationsPage /> },
   { name: 'Favorites', path: 'favorites', element: <FavoritesPage /> },
+  { name: 'Membership Card', path: 'membership-card', element: <MembershipCardPage /> },
+  { name: 'Wallet', path: 'wallet', element: <WalletPage /> },
+  { name: 'Digital Receipts', path: 'receipts', element: <ReceiptsPage /> },
   { name: 'Loyalty & Rewards', path: 'loyalty', element: <LoyaltyPage /> },
+  { name: 'Achievements', path: 'achievements', element: <AchievementsPage /> },
+  { name: 'Leaderboard', path: 'leaderboard', element: <LeaderboardPage /> },
   { name: 'Subscriptions', path: 'subscriptions', element: <SubscriptionsPage /> },
   { name: 'AI Recommendations', path: 'ai-recommendations', element: <AiRecommendationsPage /> },
   { name: 'Referrals', path: 'referrals', element: <ReferralsPage /> },
@@ -111,11 +129,19 @@ export const dashboardRoutes: RouteConfig[] = [
   { name: 'Blog',          path: 'blog',          element: <BlogAdminPage /> },
   { name: 'Testimonials',  path: 'testimonials',  element: <TestimonialsAdminPage /> },
   { name: 'Reservations',  path: 'reservations',  element: <ReservationsAdminPage /> },
+  { name: 'QR Scanner',    path: 'scanner',       element: <QrScannerPage /> },
+  { name: 'AI Manager',    path: 'ai-manager',    element: <AiManagerPage /> },
+  { name: 'Forecasts',     path: 'forecasts',     element: <ForecastsPage /> },
+  { name: 'Smart Promos',  path: 'smart-promos',  element: <SmartPromosPage /> },
+  { name: 'Intelligence',  path: 'intelligence',  element: <IntelligencePage /> },
+  { name: 'Exec Dashboards', path: 'exec-dashboards', element: <ExecDashboardsPage /> },
+  { name: 'Reports & Health', path: 'reports-health', element: <ReportsHealthPage /> },
   { name: 'Customers',     path: 'customers',     element: <CustomersAdminPage /> },
   { name: 'Payments',      path: 'payments',      element: <PaymentsAdminPage /> },
   { name: 'Announcements', path: 'announcements', element: <AnnouncementsPage /> },
   { name: 'SEO',           path: 'seo',           element: <SeoAdminPage /> },
   { name: 'Users',         path: 'users',         element: <UsersAdminPage />, roles: ['admin', 'owner'] },
+  { name: 'Loyalty & Rewards', path: 'loyalty', element: <LoyaltyAdminPage /> },
   { name: 'Settings',      path: 'settings',      element: <SettingsPage />,   roles: ['admin', 'owner', 'manager'] },
   { name: 'AI Studio',     path: 'ai-studio',     element: <AiStudioPage /> },
   { name: 'Store Operations', path: 'store-ops',  element: <StoreOpsAdminPage /> },

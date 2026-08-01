@@ -17,7 +17,7 @@ export default function AccountDashboardPage() {
     const fetchData = async () => {
       try {
         const [ordersRes, resRes, pointsRes] = await Promise.all([
-          supabase.from('orders').select('*, order_items(*, menu_items(name)), cafes(name)').eq('user_id', profile.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+          supabase.from('orders').select('*, order_items(*, menus(name)), cafes(name)').eq('user_id', profile.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
           supabase.from('reservations').select('*, cafes(name)').eq('user_id', profile.id).order('reservation_date', { ascending: false }).limit(1).maybeSingle(),
           supabase.from('loyalty_points').select('*').eq('user_id', profile.id).maybeSingle()
         ]);
@@ -77,7 +77,7 @@ export default function AccountDashboardPage() {
               <div className="space-y-1 mb-4">
                 {latestOrder.order_items?.slice(0, 2).map((item: any) => (
                   <p key={item.id} className="text-sm text-muted-foreground">
-                    {item.quantity}x {item.menu_items?.name || 'Item'}
+                    {item.quantity}x {item.menus?.name || 'Item'}
                   </p>
                 ))}
                 {latestOrder.order_items?.length > 2 && (

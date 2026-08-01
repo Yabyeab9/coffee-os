@@ -4,7 +4,8 @@ import {
   LayoutDashboard, Coffee, Image, Users, BookOpen, Calendar,
   Settings, ChevronLeft, ChevronRight, Sparkles, LogOut,
   BarChart2, FileText, Megaphone, Globe, Menu, X, Bell,
-  ChevronDown, TrendingUp, ShoppingBag, CreditCard, QrCode
+  ChevronDown, TrendingUp, ShoppingBag, CreditCard, QrCode, Heart,
+  Brain, LineChart, Zap, Lightbulb
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -49,6 +50,17 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     ],
   },
   {
+    title: 'Operational Intelligence',
+    items: [
+      { label: 'AI Manager', href: '/dashboard/ai-manager', icon: Brain },
+      { label: 'Forecasts', href: '/dashboard/forecasts', icon: LineChart },
+      { label: 'Smart Promos', href: '/dashboard/smart-promos', icon: Zap },
+      { label: 'Intelligence', href: '/dashboard/intelligence', icon: Lightbulb },
+      { label: 'Dashboards', href: '/dashboard/exec-dashboards', icon: LayoutDashboard },
+      { label: 'Reports & Health', href: '/dashboard/reports-health', icon: FileText },
+    ],
+  },
+  {
     title: 'Content',
     items: [
       { label: 'Gallery', href: '/dashboard/gallery', icon: Image },
@@ -67,6 +79,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: 'System',
     items: [
+      { label: 'Loyalty Config', href: '/dashboard/loyalty', icon: Heart },
       { label: 'Users', href: '/dashboard/users', icon: Users },
       { label: 'SEO', href: '/dashboard/seo', icon: Globe },
       { label: 'Settings', href: '/dashboard/settings', icon: Settings },

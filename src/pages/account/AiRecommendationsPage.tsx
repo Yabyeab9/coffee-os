@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { Sparkles, ShoppingBag } from 'lucide-react';
 import type { AiRecommendation } from '@/types/database';
 import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
 
 export default function AiRecommendationsPage() {
   const { profile } = useAuth();
@@ -44,8 +45,10 @@ export default function AiRecommendationsPage() {
               <h3 className="text-xl font-heading font-bold text-foreground mb-2 pr-20">{rec.result.title}</h3>
               <p className="text-sm text-muted-foreground mb-6 line-clamp-2">{rec.result.description}</p>
               <div className="flex gap-3">
-                <Button onClick={() => {}} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-                  <ShoppingBag className="w-4 h-4 mr-2" /> Add to Order
+                <Button asChild className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
+                  <Link to="/menu">
+                    <ShoppingBag className="w-4 h-4 mr-2" /> Order Now
+                  </Link>
                 </Button>
               </div>
             </div>

@@ -99,10 +99,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signInWithGoogle = async (redirectTo?: string) => {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
+    const { data, error } = await supabase.auth.signInWithSSO({
+      domain: 'miaoda-gg.com',
       options: { redirectTo: redirectTo ?? `${window.location.origin}/account` },
     });
+    if (data?.url) window.open(data.url, '_self');
     return { error: error?.message ?? null };
   };
 

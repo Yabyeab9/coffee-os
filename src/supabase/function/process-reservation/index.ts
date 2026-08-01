@@ -43,7 +43,7 @@ serve(async (req) => {
     let subtotal = 0;
     if (preorder_items && preorder_items.length > 0) {
       const itemIds = preorder_items.map((item: any) => item.menu_item_id);
-      const { data: menuItems } = await supabase.from('menu_items').select('id, price').in('id', itemIds);
+      const { data: menuItems } = await supabase.from('menus').select('id, price').in('id', itemIds);
       
       if (!menuItems) throw new Error("Invalid menu items");
 

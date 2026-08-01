@@ -65,7 +65,7 @@ export default function OrdersPage() {
                   <div className="mt-3 space-y-1">
                     {order.order_items?.map((item: any) => (
                       <p key={item.id} className="text-sm text-foreground">
-                        <span className="text-muted-foreground">{item.quantity}x</span> {item.menu_items?.name || 'Item'}
+                        <span className="text-muted-foreground">{item.quantity}x</span> {item.menus?.name || 'Item'}
                       </p>
                     ))}
                   </div>

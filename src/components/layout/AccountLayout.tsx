@@ -7,7 +7,12 @@ const NAV_ITEMS = [
   { name: 'Dashboard', path: '/account', icon: LayoutDashboard },
   { name: 'Orders', path: '/account/orders', icon: ShoppingBag },
   { name: 'Reservations', path: '/account/reservations', icon: Calendar },
+  { name: 'Membership Card', path: '/account/membership-card', icon: User },
+  { name: 'Wallet', path: '/account/wallet', icon: ShoppingBag },
+  { name: 'Digital Receipts', path: '/account/receipts', icon: LayoutDashboard },
   { name: 'Loyalty & Rewards', path: '/account/loyalty', icon: Heart },
+  { name: 'Achievements', path: '/account/achievements', icon: Heart },
+  { name: 'Leaderboard', path: '/account/leaderboard', icon: LayoutDashboard },
   { name: 'Subscriptions', path: '/account/subscriptions', icon: Coffee },
   { name: 'AI Barista', path: '/account/ai-recommendations', icon: Coffee },
   { name: 'Referrals', path: '/account/referrals', icon: User },
@@ -50,7 +55,7 @@ export default function AccountLayout() {
             <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
               <Coffee className="w-4 h-4 text-primary" />
             </div>
-            <span className="font-heading font-semibold text-foreground">Abat Coffee</span>
+            <span className="font-heading font-semibold text-foreground">Coffee OS</span>
           </Link>
         </div>
 

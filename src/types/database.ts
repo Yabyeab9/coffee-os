@@ -2,7 +2,7 @@
 // Auto-derived from Supabase schema. Do not hardcode values.
 
 export type UserRole = 'admin' | 'owner' | 'manager' | 'editor' | 'customer';
-export type ReservationStatus = 'pending' | 'pending_verification' | 'pending_payment' | 'paid' | 'confirmed' | 'checked_in' | 'completed' | 'cancelled' | 'refunded' | 'no_show';
+export type ReservationStatus = 'pending' | 'pending_verification' | 'verified' | 'pending_payment' | 'paid' | 'confirmed' | 'checked_in' | 'completed' | 'cancelled' | 'refunded' | 'no_show';
 export type ContentStatus = 'draft' | 'published';
 export type TestimonialStatus = 'pending' | 'approved' | 'rejected';
 export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded';

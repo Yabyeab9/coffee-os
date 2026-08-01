@@ -59,16 +59,6 @@ export default function MenuPage() {
   };
 
   const handleCheckout = async () => {
-
-
-    console.log("Place order clicked");
-
-    console.log({
-        session,
-        profile,
-        cart,
-        cafe
-    });
     if (!profile) {
       toast.error('Please sign in to place an order.');
       navigate(`/login?returnTo=/menu`);
@@ -92,7 +82,27 @@ export default function MenuPage() {
 
       if (error) throw error;
 
-      toast.success('Payment initialized! Order placed securely.');
+      // 3. Initialize Chapa Payment via Edge Function
+      const initResponse = await supabase.functions.invoke('chapa-initialize', {
+        body: {
+          amount: data.total_amount,
+          currency: 'ETB',
+          email: profile.email || 'customer@example.com',
+          first_name: profile.full_name || 'Customer',
+          tx_ref: data.order_number,
+          return_url: `${window.location.origin}/payment-success?tx_ref=${data.order_number}`,
+        }
+      });
+
+      if (initResponse.error) throw initResponse.error;
+      const { checkout_url } = initResponse.data;
+
+      if (checkout_url) {
+        window.location.href = checkout_url;
+        return;
+      }
+
+      toast.success('Payment initialized! Redirecting...');
       setCart([]);
       setIsCheckoutOpen(false);
       navigate('/account/orders');
@@ -226,9 +236,6 @@ export default function MenuPage() {
                   <div className="flex gap-2">
                     <Button onClick={() => addToCart(item)} className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90">
                       Order Now
-                    </Button>
-                    <Button variant="outline" size="icon" onClick={() => {}} className="shrink-0 border-border text-muted-foreground hover:text-foreground">
-                      <Heart className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>

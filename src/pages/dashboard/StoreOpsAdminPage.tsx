@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 import { motion } from 'motion/react';
 import { Settings, Clock, AlertOctagon, TrendingUp, DollarSign, Coffee, Activity, Save, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,16 +11,109 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 export default function StoreOpsAdminPage() {
+  const { cafeId } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [closureEnabled, setClosureEnabled] = useState(false);
   const [waitTimes, setWaitTimes] = useState({ pickup: '15', dineIn: '25' });
+  const [stats, setStats] = useState({
+    revenue: 0,
+    popularItem: 'No orders yet',
+    popularItemOrders: 0,
+    peakTraffic: 'N/A'
+  });
 
-  const handleSave = () => {
+  useEffect(() => {
+    async function loadData() {
+      if (!cafeId) return;
+      
+      // Load cafe settings
+      const { data: cafeData } = await supabase.from('cafes').select('settings').eq('id', cafeId).single();
+      if (cafeData?.settings) {
+        const settings: any = cafeData.settings;
+        if (settings.closure_enabled !== undefined) setClosureEnabled(settings.closure_enabled);
+        if (settings.wait_time_pickup !== undefined) setWaitTimes(prev => ({ ...prev, pickup: settings.wait_time_pickup }));
+        if (settings.wait_time_dine_in !== undefined) setWaitTimes(prev => ({ ...prev, dineIn: settings.wait_time_dine_in }));
+      }
+
+      // Load analytics for today
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const { data: orders } = await supabase
+        .from('orders')
+        .select('total_amount, created_at, order_items(quantity, menus(name))')
+        .eq('cafe_id', cafeId)
+        .eq('payment_status', 'paid')
+        .gte('created_at', todayStart.toISOString());
+
+      if (orders && orders.length > 0) {
+        let rev = 0;
+        const itemsMap: Record<string, number> = {};
+        const hoursMap: Record<number, number> = {};
+
+        orders.forEach(o => {
+          rev += (o.total_amount || 0);
+          
+          // Peak traffic hour
+          const hour = new Date(o.created_at).getHours();
+          hoursMap[hour] = (hoursMap[hour] || 0) + 1;
+
+          // Items
+          o.order_items?.forEach((oi: any) => {
+            const name = oi.menus?.name || 'Unknown Item';
+            itemsMap[name] = (itemsMap[name] || 0) + oi.quantity;
+          });
+        });
+
+        // Most popular item
+        let popItem = 'No orders yet';
+        let popMax = 0;
+        Object.entries(itemsMap).forEach(([name, count]) => {
+          if (count > popMax) { popMax = count; popItem = name; }
+        });
+
+        // Peak traffic
+        let peakHour = -1;
+        let peakCount = 0;
+        Object.entries(hoursMap).forEach(([h, count]) => {
+          if (count > peakCount) { peakCount = count; peakHour = parseInt(h); }
+        });
+
+        setStats({
+          revenue: rev,
+          popularItem: popItem,
+          popularItemOrders: popMax,
+          peakTraffic: peakHour >= 0 ? `${peakHour.toString().padStart(2, '0')}:00 - ${(peakHour+1).toString().padStart(2, '0')}:00` : 'N/A'
+        });
+      }
+      setIsLoading(false);
+    }
+    loadData();
+  }, [cafeId]);
+
+  const handleSave = async () => {
+    if (!cafeId) return;
     setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
+    try {
+      const { data: cafeData } = await supabase.from('cafes').select('settings').eq('id', cafeId).single();
+      const currentSettings = cafeData?.settings || {};
+      
+      const newSettings = {
+        ...currentSettings,
+        closure_enabled: closureEnabled,
+        wait_time_pickup: waitTimes.pickup,
+        wait_time_dine_in: waitTimes.dineIn
+      };
+
+      const { error } = await supabase.from('cafes').update({ settings: newSettings }).eq('id', cafeId);
+      if (error) throw error;
+      
       toast.success('Store operations updated successfully');
-    }, 1000);
+    } catch (err: any) {
+      toast.error('Failed to update operations: ' + err.message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -39,10 +134,9 @@ export default function StoreOpsAdminPage() {
               <div className="p-2 bg-primary/10 rounded-lg">
                 <DollarSign className="w-5 h-5 text-primary" />
               </div>
-              <Badge variant="outline" className="text-green-500 border-green-500/50">+12%</Badge>
             </div>
             <p className="text-sm font-medium text-muted-foreground mb-1">Gross Revenue</p>
-            <h3 className="text-2xl font-bold">14,250 ETB</h3>
+            <h3 className="text-2xl font-bold">{stats.revenue.toLocaleString()} ETB</h3>
           </div>
           
           <div className="glass rounded-xl p-6 border border-border/50">
@@ -52,8 +146,8 @@ export default function StoreOpsAdminPage() {
               </div>
             </div>
             <p className="text-sm font-medium text-muted-foreground mb-1">Most Popular Item</p>
-            <h3 className="text-2xl font-bold">V60 Pour Over</h3>
-            <p className="text-xs text-muted-foreground mt-1">42 orders today</p>
+            <h3 className="text-2xl font-bold">{stats.popularItem}</h3>
+            <p className="text-xs text-muted-foreground mt-1">{stats.popularItemOrders} orders today</p>
           </div>
 
           <div className="glass rounded-xl p-6 border border-border/50">
@@ -63,8 +157,7 @@ export default function StoreOpsAdminPage() {
               </div>
             </div>
             <p className="text-sm font-medium text-muted-foreground mb-1">Peak Traffic</p>
-            <h3 className="text-2xl font-bold">08:00 - 10:30</h3>
-            <p className="text-xs text-muted-foreground mt-1">Expected busy soon</p>
+            <h3 className="text-2xl font-bold">{stats.peakTraffic}</h3>
           </div>
         </div>
       </div>

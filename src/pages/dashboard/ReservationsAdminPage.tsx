@@ -14,7 +14,11 @@ import { useQueryClient } from '@tanstack/react-query';
 
 const STATUS_STYLES: Record<string, string> = {
   pending: 'bg-warning/15 text-warning border-warning/30',
+  pending_verification: 'bg-warning/15 text-warning border-warning/30',
+  verified: 'bg-info/15 text-info border-info/30',
+  pending_payment: 'bg-warning/15 text-warning border-warning/30',
   confirmed: 'bg-primary/15 text-primary border-primary/30',
+  checked_in: 'bg-info/15 text-info border-info/30',
   completed: 'bg-primary/15 text-primary border-primary/30',
   cancelled: 'bg-destructive/15 text-destructive border-destructive/30',
   no_show: 'bg-muted text-muted-foreground border-border',
@@ -133,13 +137,13 @@ export default function ReservationsAdminPage() {
                         {r.status === 'pending_verification' && (
                           <div className="text-xs text-muted-foreground border border-border px-2 py-1 rounded">Awaiting Verification</div>
                         )}
-                        {(r.status === 'pending' || r.status === 'confirmed' || r.status === 'pending_payment' || r.status === 'paid') && (
+                        {(r.status === 'pending' || r.status === 'confirmed' || r.status === 'verified' || r.status === 'pending_payment' || r.status === 'paid') && (
                           <Button size="sm" onClick={() => handleUpdateStatus(r.id, 'checked_in')} className="bg-primary text-primary-foreground hover:bg-primary/90">Check In</Button>
                         )}
                         {r.status === 'checked_in' && (
                           <Button size="sm" onClick={() => handleUpdateStatus(r.id, 'completed')} className="bg-info text-info-foreground hover:bg-info/90">Complete</Button>
                         )}
-                        {(r.status === 'pending' || r.status === 'confirmed' || r.status === 'pending_payment' || r.status === 'pending_verification') && (
+                        {(r.status === 'pending' || r.status === 'confirmed' || r.status === 'verified' || r.status === 'pending_payment' || r.status === 'pending_verification') && (
                           <Button size="sm" variant="outline" onClick={() => handleUpdateStatus(r.id, 'cancelled')} className="border-destructive text-destructive hover:bg-destructive/10">Cancel</Button>
                         )}
                       </div>

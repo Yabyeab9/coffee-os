@@ -1,102 +1,134 @@
-import React, { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import React from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { Coffee, CheckCircle, CreditCard } from 'lucide-react';
-import type { Subscription } from '@/types/database';
+import { useAuth } from '@/contexts/AuthContext';
+import { motion } from 'framer-motion';
+import { Coffee, CheckCircle, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-
-const PLANS = [
-  {
-    name: 'Starter',
-    price: 499,
-    benefits: ['1 free coffee every week', '10% discount on all orders']
-  },
-  {
-    name: 'Premium',
-    price: 999,
-    benefits: ['2 free drinks every week', 'Priority reservations', 'VIP rewards access', '15% discount on all orders']
-  },
-  {
-    name: 'Business',
-    price: 2499,
-    benefits: ['Team ordering up to 5 people', 'Meeting room priority', 'Corporate invoices', 'Free delivery']
-  }
-];
+import { toast } from 'sonner';
 
 export default function SubscriptionsPage() {
   const { profile } = useAuth();
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const userId = profile?.id;
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    async function load() {
-      if (!profile?.id) return;
-      const { data } = await supabase.from('subscriptions').select('*').eq('user_id', profile.id).eq('active', true).maybeSingle();
-      setSubscription(data);
+  const { data: plans } = useQuery({
+    queryKey: ['subscription_plans'],
+    queryFn: async () => {
+      const { data } = await supabase.from('subscription_plans').select('*').eq('is_active', true);
+      return data || [];
     }
-    load();
-  }, [profile?.id]);
+  });
+
+  const { data: currentSub } = useQuery({
+    queryKey: ['subscriptions', userId],
+    queryFn: async () => {
+      const { data } = await supabase.from('subscriptions').select('*, subscription_plans(*)').eq('user_id', userId).eq('status', 'active').single();
+      return data;
+    },
+    enabled: !!userId
+  });
+
+  const subscribeMutation = useMutation({
+    mutationFn: async (planId: string) => {
+      const { data, error } = await supabase.functions.invoke('subscription-engine', {
+        body: { action: 'subscribe', payload: { plan_id: planId } }
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      toast.success('Successfully subscribed!');
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+    },
+    onError: (err: any) => toast.error(err.message)
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('subscription-engine', {
+        body: { action: 'cancel' }
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      toast.success('Subscription cancelled');
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+    },
+    onError: (err: any) => toast.error(err.message)
+  });
 
   return (
-    <div className="p-6 md:p-10 max-w-5xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-3xl font-heading font-semibold text-foreground mb-2">Coffee Memberships</h1>
-        <p className="text-muted-foreground">Subscribe and save with our exclusive membership plans.</p>
+    <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8">
+      <div className="flex items-center gap-3 mb-2">
+        <Coffee className="w-8 h-8 text-primary" />
+        <h1 className="text-3xl font-heading font-semibold">Coffee Subscriptions</h1>
       </div>
+      <p className="text-muted-foreground">Subscribe and save on your daily coffee habits.</p>
 
-      {subscription ? (
-        <div className="glass rounded-xl p-8 border border-primary/30 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-bl-full"></div>
-          <Badge className="mb-4 bg-primary text-primary-foreground hover:bg-primary border-none">Active Subscription</Badge>
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-6 relative z-10">
+      {currentSub && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-xl p-6 border border-primary/50 relative overflow-hidden bg-primary/5">
+          <div className="absolute top-0 right-0 p-6 opacity-20">
+            <Zap className="w-24 h-24 text-primary" />
+          </div>
+          <h2 className="text-lg font-semibold text-foreground mb-4">Your Active Plan</h2>
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
+              <Coffee className="w-8 h-8 text-primary" />
+            </div>
             <div>
-              <h2 className="text-3xl font-heading font-bold text-foreground mb-1">{subscription.plan_name} Plan</h2>
-              <p className="text-muted-foreground">Renews on {new Date(subscription.expires_at || Date.now()).toLocaleDateString()}</p>
-            </div>
-            <div className="text-left md:text-right">
-              <p className="text-2xl font-bold text-primary">ETB {subscription.monthly_price} <span className="text-sm text-muted-foreground font-normal">/mo</span></p>
+              <h3 className="text-2xl font-bold">{currentSub.subscription_plans?.plan_name}</h3>
+              <p className="text-muted-foreground">{currentSub.subscription_plans?.price} ETB / {currentSub.subscription_plans?.billing_cycle}</p>
             </div>
           </div>
-          <div className="space-y-2 mb-6">
-            <h3 className="font-semibold text-foreground mb-3">Your Benefits:</h3>
-            {(subscription.benefits as string[] || []).map((b, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-primary" />
-                <span className="text-sm text-foreground">{b}</span>
-              </div>
-            ))}
+          <div className="text-sm text-muted-foreground mb-6">
+            <p>Started: {new Date(currentSub.start_date).toLocaleDateString()}</p>
+            <p>Next billing: {new Date(currentSub.next_billing_date).toLocaleDateString()}</p>
           </div>
-          <div className="flex gap-3 pt-6 border-t border-border/50">
-            <Button variant="outline" onClick={() => {}} className="border-border text-primary hover:bg-secondary">Cancel Plan</Button>
-            <Button onClick={() => {}} className="bg-primary text-primary-foreground hover:bg-primary/90 ml-auto">Upgrade Plan</Button>
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {PLANS.map(plan => (
-            <div key={plan.name} className="glass rounded-xl p-6 flex flex-col">
-              <div className="mb-6">
-                <h3 className="text-xl font-heading font-bold text-foreground mb-2">{plan.name}</h3>
-                <div className="flex items-end gap-1">
-                  <span className="text-3xl font-bold text-primary">ETB {plan.price}</span>
-                  <span className="text-muted-foreground mb-1">/mo</span>
-                </div>
-              </div>
-              <div className="space-y-3 mb-8 flex-1">
-                {plan.benefits.map((b, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                    <span className="text-sm text-muted-foreground">{b}</span>
-                  </div>
-                ))}
-              </div>
-              <Button variant="outline" onClick={() => {}} className="w-full bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20">
-                <CreditCard className="w-4 h-4 mr-2" /> Subscribe Now
-              </Button>
-            </div>
-          ))}
-        </div>
+          <Button variant="outline" className="text-destructive border-destructive hover:bg-destructive/10" onClick={() => cancelMutation.mutate()} disabled={cancelMutation.isPending}>
+            Cancel Subscription
+          </Button>
+        </motion.div>
       )}
+
+      <h2 className="text-2xl font-semibold mt-12 mb-6">Available Plans</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {plans?.map((plan) => (
+          <motion.div key={plan.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-xl p-6 border border-border flex flex-col">
+            <h3 className="text-xl font-bold mb-2">{plan.plan_name}</h3>
+            <p className="text-muted-foreground text-sm mb-4 h-10">{plan.description}</p>
+            <div className="mb-6">
+              <span className="text-3xl font-bold">{plan.price}</span>
+              <span className="text-muted-foreground"> ETB / {plan.billing_cycle}</span>
+            </div>
+            
+            <ul className="space-y-3 mb-8 flex-1">
+              {(plan.benefits || []).map((benefit: string, idx: number) => (
+                <li key={idx} className="flex items-start gap-2 text-sm">
+                  <CheckCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                  <span>{benefit}</span>
+                </li>
+              ))}
+            </ul>
+            
+            <Button 
+              className="w-full" 
+              onClick={() => subscribeMutation.mutate(plan.id)}
+              disabled={subscribeMutation.isPending || currentSub?.plan_id === plan.id}
+            >
+              {currentSub?.plan_id === plan.id ? 'Current Plan' : 'Subscribe Now'}
+            </Button>
+          </motion.div>
+        ))}
+        {plans?.length === 0 && (
+          <div className="col-span-3 text-center p-8 text-muted-foreground glass rounded-xl border border-border">
+            No subscription plans available at the moment.
+          </div>
+        )}
+      </div>
     </div>
   );
 }
