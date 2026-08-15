@@ -25,7 +25,7 @@ import OrdersAdminPage from './pages/dashboard/OrdersAdminPage';
 import MenusPage from './pages/dashboard/MenusPage';
 import GalleryAdminPage from './pages/dashboard/GalleryAdminPage';
 import BlogAdminPage from './pages/dashboard/BlogAdminPage';
-import TestimonialsAdminPage from './pages/dashboard/TestimonialsAdminPage';
+import HomepageCmsPage from './pages/dashboard/HomepageCmsPage';
 import ReservationsAdminPage from './pages/dashboard/ReservationsAdminPage';
 import CustomersAdminPage from './pages/dashboard/CustomersAdminPage';
 import PaymentsAdminPage from './pages/dashboard/PaymentsAdminPage';
@@ -33,7 +33,7 @@ import AnnouncementsPage from './pages/dashboard/AnnouncementsPage';
 import SeoAdminPage from './pages/dashboard/SeoAdminPage';
 import UsersAdminPage from './pages/dashboard/UsersAdminPage';
 import SettingsPage from './pages/dashboard/SettingsPage';
-import AiStudioPage from './pages/dashboard/AiStudioPage';
+
 import StoreOpsAdminPage from './pages/dashboard/StoreOpsAdminPage';
 import LoyaltyAdminPage from './pages/dashboard/LoyaltyAdminPage';
 import QrScannerPage from './pages/dashboard/QrScannerPage';
@@ -55,6 +55,13 @@ import AccountSettingsPage from './pages/account/SettingsPage';
 import LoyaltyPage from './pages/account/LoyaltyPage';
 import SubscriptionsPage from './pages/account/SubscriptionsPage';
 import AiRecommendationsPage from './pages/account/AiRecommendationsPage';
+import CoffeeJourneyPage from './pages/account/CoffeeJourneyPage';
+import CoffeePassportPage from './pages/account/CoffeePassportPage';
+import SeasonalDiscoveriesPage from './pages/account/SeasonalDiscoveriesPage';
+import BeanExplorerPage from './pages/account/BeanExplorerPage';
+import CoffeePersonalityPage from './pages/account/CoffeePersonalityPage';
+import TrySomethingNewPage from './pages/account/TrySomethingNewPage';
+import CoffeeChallengesPage from './pages/account/CoffeeChallengesPage';
 import ReferralsPage from './pages/account/ReferralsPage';
 import StreaksPage from './pages/account/StreaksPage';
 import MembershipCardPage from './pages/account/MembershipCardPage';
@@ -87,7 +94,7 @@ export const publicRoutes: RouteConfig[] = [
   { name: 'Blog Post',   path: '/blog/:slug',   element: <BlogPostDetailPage />, public: true },
   { name: 'Contact',     path: '/contact',      element: <ContactPage />,       public: true },
   { name: 'Privacy',     path: '/privacy',      element: <PrivacyPage />,       public: true },
-  { name: 'Payment Success', path: '/payment-success', element: <PaymentSuccessPage />, public: true },
+  { name: 'Payment Success', path: '/payment/success', element: <PaymentSuccessPage />, public: true },
   { name: 'Payment Failure', path: '/payment-failure', element: <PaymentFailurePage />, public: true },
 ];
 
@@ -110,6 +117,13 @@ export const accountRoutes: RouteConfig[] = [
   { name: 'Leaderboard', path: 'leaderboard', element: <LeaderboardPage /> },
   { name: 'Subscriptions', path: 'subscriptions', element: <SubscriptionsPage /> },
   { name: 'AI Recommendations', path: 'ai-recommendations', element: <AiRecommendationsPage /> },
+  { name: 'Coffee Journey', path: 'coffee-journey', element: <CoffeeJourneyPage /> },
+  { name: 'Coffee Passport', path: 'coffee-passport', element: <CoffeePassportPage /> },
+  { name: 'Seasonal Discoveries', path: 'seasonal-discoveries', element: <SeasonalDiscoveriesPage /> },
+  { name: 'Bean Explorer', path: 'bean-explorer', element: <BeanExplorerPage /> },
+  { name: 'Coffee Personality', path: 'coffee-personality', element: <CoffeePersonalityPage /> },
+  { name: 'Try Something New', path: 'try-something-new', element: <TrySomethingNewPage /> },
+  { name: 'Coffee Challenges', path: 'coffee-challenges', element: <CoffeeChallengesPage /> },
   { name: 'Referrals', path: 'referrals', element: <ReferralsPage /> },
   { name: 'Coffee Streaks', path: 'streaks', element: <StreaksPage /> },
   { name: 'Profile', path: 'profile', element: <ProfilePage /> },
@@ -127,7 +141,7 @@ export const dashboardRoutes: RouteConfig[] = [
   { name: 'Menus',         path: 'menus',         element: <MenusPage /> },
   { name: 'Gallery',       path: 'gallery',       element: <GalleryAdminPage /> },
   { name: 'Blog',          path: 'blog',          element: <BlogAdminPage /> },
-  { name: 'Testimonials',  path: 'testimonials',  element: <TestimonialsAdminPage /> },
+  { name: 'Homepage CMS',  path: 'homepage-cms',  element: <HomepageCmsPage /> },
   { name: 'Reservations',  path: 'reservations',  element: <ReservationsAdminPage /> },
   { name: 'QR Scanner',    path: 'scanner',       element: <QrScannerPage /> },
   { name: 'AI Manager',    path: 'ai-manager',    element: <AiManagerPage /> },
@@ -143,7 +157,7 @@ export const dashboardRoutes: RouteConfig[] = [
   { name: 'Users',         path: 'users',         element: <UsersAdminPage />, roles: ['admin', 'owner'] },
   { name: 'Loyalty & Rewards', path: 'loyalty', element: <LoyaltyAdminPage /> },
   { name: 'Settings',      path: 'settings',      element: <SettingsPage />,   roles: ['admin', 'owner', 'manager'] },
-  { name: 'AI Studio',     path: 'ai-studio',     element: <AiStudioPage /> },
+
   { name: 'Store Operations', path: 'store-ops',  element: <StoreOpsAdminPage /> },
 ];
 

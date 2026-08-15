@@ -41,7 +41,7 @@ export default function StoreOpsAdminPage() {
       todayStart.setHours(0, 0, 0, 0);
       const { data: orders } = await supabase
         .from('orders')
-        .select('total_amount, created_at, order_items(quantity, menus(name))')
+        .select('total_amount, created_at, order_items(quantity, menu_items(name))')
         .eq('cafe_id', cafeId)
         .eq('payment_status', 'paid')
         .gte('created_at', todayStart.toISOString());
@@ -60,7 +60,7 @@ export default function StoreOpsAdminPage() {
 
           // Items
           o.order_items?.forEach((oi: any) => {
-            const name = oi.menus?.name || 'Unknown Item';
+            const name = oi.menu_items?.name || 'Unknown Item';
             itemsMap[name] = (itemsMap[name] || 0) + oi.quantity;
           });
         });
@@ -88,7 +88,7 @@ export default function StoreOpsAdminPage() {
       }
       setIsLoading(false);
     }
-    loadData();
+    loadData().catch(() => setIsLoading(false));
   }, [cafeId]);
 
   const handleSave = async () => {

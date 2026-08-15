@@ -12,14 +12,36 @@ export default function ReceiptsPage() {
   const { profile } = useAuth();
   const userId = profile?.id;
 
-  const { data: receipts } = useQuery({
+  const { data: receipts, isLoading, isError } = useQuery({
     queryKey: ['receipts', userId],
     queryFn: async () => {
+      // For MVP, we query receipts. Real implementation might generate them on the fly
       const { data } = await supabase.from('receipts').select('*, orders(*), reservations(*)').eq('user_id', userId).order('generated_at', { ascending: false });
       return data || [];
     },
     enabled: !!userId
   });
+
+  if (isLoading) {
+    return (
+      <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8 animate-pulse">
+        <div className="h-10 w-48 bg-muted rounded"></div>
+        <div className="space-y-4">
+          <div className="h-24 bg-muted rounded-xl"></div>
+          <div className="h-24 bg-muted rounded-xl"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="p-4 md:p-8 max-w-5xl mx-auto text-center">
+        <p className="text-destructive">Failed to load receipts. Please try again later.</p>
+        <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>Retry</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8">

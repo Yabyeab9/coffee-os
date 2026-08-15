@@ -5,18 +5,31 @@ import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
 import QRCode from 'qrcode';
 import { CreditCard, Star, CalendarDays, Coffee, Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function MembershipCardPage() {
   const { profile } = useAuth();
   const userId = profile?.id;
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
 
-  const { data: membership } = useQuery({
+  const { data: membership, isLoading, isError } = useQuery({
     queryKey: ['membership', userId],
     queryFn: async () => {
-      const { data: mem } = await supabase.from('memberships').select('*').eq('user_id', userId).single();
-      const { data: points } = await supabase.from('loyalty_points').select('*, loyalty_tiers(*)').eq('user_id', userId).single();
-      return { mem, points };
+      const { data: mem, error: mErr } = await supabase.from('memberships').select('*').eq('user_id', userId).single();
+      const { data: points, error: pErr } = await supabase.from('loyalty_points').select('*').eq('user_id', userId).single();
+      
+      // Auto-create membership if it doesn't exist
+      let finalMem = mem;
+      if (!mem && userId) {
+        const { data: newMem } = await supabase.from('memberships').insert({
+          user_id: userId,
+          membership_number: `MEM-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+          qr_code: `MEMBER:${userId}`
+        }).select().single();
+        finalMem = newMem;
+      }
+      
+      return { mem: finalMem, points };
     },
     enabled: !!userId
   });
@@ -29,7 +42,6 @@ export default function MembershipCardPage() {
         color: { dark: '#000000', light: '#ffffff' }
       }).then(setQrCodeUrl);
     } else if (userId) {
-      // Create a fallback QR based on user ID for MVP
       QRCode.toDataURL(`MEMBER:${userId}`, {
         width: 300,
         margin: 2,
@@ -38,7 +50,30 @@ export default function MembershipCardPage() {
     }
   }, [membership, userId]);
 
-  const tier = membership?.points?.loyalty_tiers;
+  if (isLoading) {
+    return (
+      <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8 animate-pulse">
+        <div className="h-10 w-48 bg-muted rounded"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+          <div className="h-[400px] bg-muted rounded-2xl"></div>
+          <div className="space-y-6">
+            <div className="h-48 bg-muted rounded-xl"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="p-4 md:p-8 max-w-5xl mx-auto text-center">
+        <p className="text-destructive">Failed to load membership card. Please try again later.</p>
+        <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>Retry</Button>
+      </div>
+    );
+  }
+
+  const tier = membership?.mem?.tier || 'bronze';
 
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8">
@@ -71,9 +106,9 @@ export default function MembershipCardPage() {
             )}
           </div>
           
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-background/80 border border-border shadow-sm">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-background/80 border border-border shadow-sm uppercase tracking-wider">
             <Star className="w-4 h-4 text-primary" />
-            <span className="font-semibold text-sm">{tier?.tier_name || 'Member'} Tier</span>
+            <span className="font-semibold text-xs">{tier} Tier</span>
           </div>
         </motion.div>
 

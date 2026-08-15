@@ -5,20 +5,38 @@ import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { Trophy, Medal, Crown } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 
 export default function LeaderboardPage() {
   const { profile } = useAuth();
   const userId = profile?.id;
 
-  const { data: leaderboard } = useQuery({
+  const { data: leaderboard, isLoading, isError } = useQuery({
     queryKey: ['leaderboard'],
     queryFn: async () => {
       // In a real app we'd aggregate this or use the leaderboards table. 
-      // We will mock some data combined with real top users from loyalty_points for the prototype.
-      const { data } = await supabase.from('loyalty_points').select('*, auth_users:user_id(id, raw_user_meta_data)').order('lifetime_points', { ascending: false }).limit(10);
+      const { data } = await supabase.from('loyalty_points').select('*').order('total_earned', { ascending: false }).limit(10);
       return data || [];
     }
   });
+
+  if (isLoading) {
+    return (
+      <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8 animate-pulse">
+        <div className="h-10 w-64 bg-muted rounded"></div>
+        <div className="h-96 bg-muted rounded-xl mt-8"></div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="p-4 md:p-8 max-w-5xl mx-auto text-center">
+        <p className="text-destructive">Failed to load leaderboard.</p>
+        <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>Retry</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8">
@@ -38,8 +56,7 @@ export default function LeaderboardPage() {
         <div className="divide-y divide-border">
           {leaderboard?.map((entry: any, index: number) => {
             const isCurrentUser = entry.user_id === userId;
-            const meta = entry.auth_users?.raw_user_meta_data || {};
-            const name = meta.full_name || meta.name || `User ${entry.user_id.slice(0, 4)}`;
+            const name = isCurrentUser ? (profile?.full_name || 'You') : `Coffee Fan ${entry.user_id.slice(0, 4).toUpperCase()}`;
             
             return (
               <motion.div 
@@ -64,7 +81,7 @@ export default function LeaderboardPage() {
                   </span>
                 </div>
                 <div className="col-span-3 text-right font-bold text-foreground">
-                  {entry.lifetime_points}
+                  {entry.total_earned}
                 </div>
               </motion.div>
             );

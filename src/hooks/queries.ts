@@ -10,7 +10,9 @@ import {
   getDashboardStats,
   getReservationTrend,
   getReservations,
-  getOrders
+  getOrders,
+  getActiveOrders,
+  getAdminQueueStats,
 } from '@/lib/api';
 
 import { getCafeSlug } from '@/lib/cafe-config';
@@ -53,6 +55,24 @@ export function useOrdersList(cafeId?: string) {
     queryKey: ['orders', cafeId],
     queryFn: () => getOrders(cafeId!),
     enabled: !!cafeId,
+  });
+}
+
+export function useActiveOrders(cafeId?: string) {
+  return useQuery({
+    queryKey: ['active_orders', cafeId],
+    queryFn: () => getActiveOrders(cafeId!),
+    enabled: !!cafeId,
+    refetchInterval: 30_000, // fallback poll every 30s if realtime fails
+  });
+}
+
+export function useAdminQueueStats(cafeId?: string) {
+  return useQuery({
+    queryKey: ['admin_queue_stats', cafeId],
+    queryFn: () => getAdminQueueStats(cafeId!),
+    enabled: !!cafeId,
+    refetchInterval: 60_000,
   });
 }
 

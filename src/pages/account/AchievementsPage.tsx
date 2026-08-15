@@ -5,22 +5,45 @@ import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { Award, Trophy, Star, Shield, Lock } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
 
 export default function AchievementsPage() {
   const { profile } = useAuth();
   const userId = profile?.id;
 
-  const { data: achievements } = useQuery({
+  const { data: achievements, isLoading, isError } = useQuery({
     queryKey: ['achievements', userId],
     queryFn: async () => {
-      const { data: badges } = await supabase.from('badges').select('*');
-      const { data: userBadges } = await supabase.from('user_badges').select('*').eq('user_id', userId);
+      const { data: badges } = await supabase.from('achievements').select('*');
+      const { data: userBadges } = await supabase.from('user_achievements').select('*').eq('user_id', userId);
       return { badges: badges || [], userBadges: userBadges || [] };
     },
     enabled: !!userId
   });
 
-  const earnedBadgeIds = new Set(achievements?.userBadges.map((ub) => ub.badge_id));
+  const earnedBadgeIds = new Set(achievements?.userBadges.map((ub) => ub.achievement_id));
+
+  if (isLoading) {
+    return (
+      <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8 animate-pulse">
+        <div className="h-10 w-64 bg-muted rounded"></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-8">
+          <div className="h-48 bg-muted rounded-xl"></div>
+          <div className="h-48 bg-muted rounded-xl"></div>
+          <div className="h-48 bg-muted rounded-xl"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="p-4 md:p-8 max-w-5xl mx-auto text-center">
+        <p className="text-destructive">Failed to load achievements.</p>
+        <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>Retry</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8">
@@ -38,7 +61,7 @@ export default function AchievementsPage() {
               key={badge.id} 
               initial={{ opacity: 0, scale: 0.95 }} 
               animate={{ opacity: 1, scale: 1 }} 
-              className={`glass rounded-xl p-6 border flex flex-col items-center justify-center text-center relative ${isEarned ? 'border-primary/30 bg-primary/5' : 'border-border/50 opacity-60 grayscale'}`}
+              className={`glass rounded-xl p-6 border flex flex-col items-center justify-center text-center relative ${isEarned ? 'border-primary/30 bg-primary/5 shadow-sm' : 'border-border/50 opacity-60 grayscale'}`}
             >
               {!isEarned && (
                 <div className="absolute top-3 right-3 text-muted-foreground">
@@ -51,7 +74,7 @@ export default function AchievementsPage() {
                  badge.icon === 'shield' ? <Shield className="w-8 h-8" /> : 
                  <Trophy className="w-8 h-8" />}
               </div>
-              <h3 className={`font-semibold mb-1 ${isEarned ? 'text-foreground' : 'text-muted-foreground'}`}>{badge.badge_name}</h3>
+              <h3 className={`font-semibold mb-1 ${isEarned ? 'text-foreground' : 'text-muted-foreground'}`}>{badge.name}</h3>
               <p className="text-xs text-muted-foreground">{badge.description}</p>
               {isEarned && (
                 <div className="mt-4 text-[10px] uppercase font-semibold text-primary tracking-wider">Unlocked</div>
@@ -59,9 +82,9 @@ export default function AchievementsPage() {
             </motion.div>
           );
         })}
-        {achievements?.badges.length === 0 && (
-          <div className="col-span-full p-8 text-center text-muted-foreground">
-            No badges configured yet.
+        {(!achievements?.badges || achievements.badges.length === 0) && (
+          <div className="col-span-full p-12 text-center text-muted-foreground glass rounded-xl border border-border">
+            We are working on bringing exciting new achievements! Check back soon.
           </div>
         )}
       </div>

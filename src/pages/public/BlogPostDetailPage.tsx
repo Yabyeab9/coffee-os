@@ -122,7 +122,7 @@ export default function BlogPostDetailPage() {
               ))}
             </div>
           ) : (
-            <p className="text-muted-foreground">Full content coming soon.</p>
+            <p className="text-muted-foreground italic">No content has been added to this post yet.</p>
           )}
         </motion.div>
 

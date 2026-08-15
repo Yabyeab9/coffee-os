@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
-import { Coffee, LayoutDashboard, ShoppingBag, Calendar, Heart, User, Bell, LogOut, Menu, X, Settings } from 'lucide-react';
+import { Coffee, LayoutDashboard, ShoppingBag, Calendar, Heart, User, Bell, LogOut, Menu, X, Settings, Flame, Trophy } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 const NAV_ITEMS = [
@@ -11,7 +11,8 @@ const NAV_ITEMS = [
   { name: 'Wallet', path: '/account/wallet', icon: ShoppingBag },
   { name: 'Digital Receipts', path: '/account/receipts', icon: LayoutDashboard },
   { name: 'Loyalty & Rewards', path: '/account/loyalty', icon: Heart },
-  { name: 'Achievements', path: '/account/achievements', icon: Heart },
+  { name: 'Coffee Journey', path: '/account/gamified-loyalty', icon: Flame },
+  { name: 'Achievements', path: '/account/achievements', icon: Trophy },
   { name: 'Leaderboard', path: '/account/leaderboard', icon: LayoutDashboard },
   { name: 'Subscriptions', path: '/account/subscriptions', icon: Coffee },
   { name: 'AI Barista', path: '/account/ai-recommendations', icon: Coffee },
@@ -41,7 +42,7 @@ export default function AccountLayout() {
           <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
             <Coffee className="w-4 h-4 text-primary" />
           </div>
-          <span className="font-heading font-semibold text-foreground">Coffee OS</span>
+          <span className="font-heading font-semibold text-foreground">Abat Coffee</span>
         </Link>
         <button onClick={() => setMobileOpen(!mobileOpen)} className="p-2 text-muted-foreground hover:text-foreground">
           {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -55,7 +56,7 @@ export default function AccountLayout() {
             <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
               <Coffee className="w-4 h-4 text-primary" />
             </div>
-            <span className="font-heading font-semibold text-foreground">Coffee OS</span>
+            <span className="font-heading font-semibold text-foreground">Abat Coffee</span>
           </Link>
         </div>
 

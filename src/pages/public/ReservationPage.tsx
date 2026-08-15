@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Calendar, Clock, Users, ChevronRight, ChevronLeft, CheckCircle, Coffee, Loader2, Plus, Minus, ShoppingBag } from 'lucide-react';
+import { Calendar, Clock, Users, ChevronRight, ChevronLeft, Coffee, Loader2, Plus, Minus, ShoppingBag, Sparkles, Moon, Zap, Heart, Gift } from 'lucide-react';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { getCafeBySlug, getAnnouncements, createReservation, getMenuCategories, getMenuItems } from '@/lib/api';
+import { getCafeBySlug, getAnnouncements, getMenuCategories, getMenuItems } from '@/lib/api';
 import type { Cafe, Announcement, MenuCategory, MenuItem } from '@/types/database';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import RedemptionPicker from '@/components/loyalty/RedemptionPicker';
 
 import { getCafeSlug } from '@/lib/cafe-config';
 const CAFE_SLUG = getCafeSlug();
@@ -45,6 +46,38 @@ export default function ReservationPage() {
 
   // Pre-order state
   const [wantsPreorder, setWantsPreorder] = useState<boolean | null>(null);
+
+  // Loyalty redemption for this reservation
+  const [appliedRedemptionCode, setAppliedRedemptionCode] = useState<string | null>(null);
+  const [appliedRedemptionDiscount, setAppliedRedemptionDiscount] = useState(0);
+
+  
+  // Vibe Based Smart Reservation
+  const [selectedVibe, setSelectedVibe] = useState('Social Energy');
+  const vibes = [
+    { id: 'Quiet Focus', icon: Moon, desc: 'Deep work & reading' },
+    { id: 'Social Energy', icon: Zap, desc: 'Catch-ups & lively chats' },
+    { id: 'Creative Buzz', icon: Sparkles, desc: 'Inspiring & moderate' },
+    { id: 'Romantic Ambiance', icon: Heart, desc: 'Cozy & intimate' }
+  ];
+
+const [trafficPatterns, setTrafficPatterns] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!date) return;
+    async function loadTraffic() {
+      const { data } = await supabase.from('reservation_traffic_patterns').select('*').eq('date', date);
+      setTrafficPatterns(data || []);
+    }
+    loadTraffic();
+  }, [date]);
+
+  const getTrafficForTime = (t: string) => {
+    // Traffic patterns use 'HH:MM:SS', t is 'HH:MM'
+    const pattern = trafficPatterns.find(x => x.time_slot.startsWith(t));
+    return pattern;
+  };
+
   const [cart, setCart] = useState<{item: MenuItem, qty: number}[]>([]);
 
   useEffect(() => {
@@ -106,87 +139,61 @@ export default function ReservationPage() {
   };
 
   const cartTotal = cart.reduce((sum, { item, qty }) => sum + ((item.price || 0) * qty), 0);
+  const cartTax = cartTotal * 0.15;
+  const cartGross = cartTotal + cartTax;
+  const loyaltyDiscount = Math.min(appliedRedemptionDiscount, cartGross);
+  const cartFinalTotal = Math.max(0, cartGross - loyaltyDiscount);
+  const isZeroPay = cartFinalTotal === 0 && cart.length > 0;
 
   const handleSubmit = async () => {
-  if (!profile) {
-    toast.error('Please sign in to make a reservation.');
-    navigate(`/login?returnTo=/reservation`);
-    return;
-  }
-
-  if (!cafe) return;
-
-  setIsSubmitting(true);
-
-  try {
-    const { data, error } = await supabase.functions.invoke(
-      'process-reservation',
-        {
-    body: {
-      cafe_id: cafe.id,
-      reservation_date: date,
-      reservation_time: time,
-      guest_count: partySize,
-      guest_name: name,
-      guest_email: email || null,
-      guest_phone: phone || null,
-      notes: notes || null,
-      preorder_items:
-        wantsPreorder && cart.length > 0
-          ? cart.map((c) => ({
-              menu_item_id: c.item.id,
-              quantity: c.qty,
-            }))
-          : [],
-    },
-  }
-);
-
-    console.log('process-reservation response:', data);
-    console.log('process-reservation error:', error);
-
-    if (error) {
-      throw new Error(error.message || 'Failed to create reservation.');
+    if (!profile) {
+      toast.error('Please sign in to make a reservation.');
+      navigate(`/login?returnTo=/reservation`);
+      return;
     }
+    if (!cafe) return;
+    setIsSubmitting(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('process-reservation', {
+        body: {
+          cafe_id: cafe.id,
+          reservation_date: date,
+          reservation_time: time,
+          guest_count: partySize,
+          guest_name: name,
+          guest_email: email || null,
+          guest_phone: phone || null,
+          notes: notes || null,
+          preorder_items: wantsPreorder && cart.length > 0 ? cart.map(c => ({ menu_item_id: c.item.id, quantity: c.qty })) : []
+        }
+      });
 
-    if (!data) {
-      throw new Error('No response received from reservation service.');
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      // Apply loyalty redemption to the created reservation if user selected one
+      if (appliedRedemptionCode && data.reservation?.id) {
+        const { error: redemptionError } = await supabase.rpc('apply_reservation_redemption', {
+          p_reservation_id: data.reservation.id,
+          p_redemption_code: appliedRedemptionCode,
+        });
+        if (redemptionError) {
+          // Don't fail the whole reservation — just warn
+          toast.warning('Reservation confirmed, but reward could not be applied.', {
+            description: redemptionError.message,
+          });
+        }
+      }
+
+      navigate(`/reservation/verify/${data.reservation.id}`);
+    } catch (error: any) {
+      toast.error('Reservation failed', { description: error.message || String(error) });
+    } finally {
+      setIsSubmitting(false);
     }
+  };
 
-    if (data.error) {
-      throw new Error(data.error);
-    }
-
-    // IMPORTANT: verify the reservation exists before navigating
-    if (!data.reservation_id) {
-      console.error('Unexpected reservation response:', data);
-
-      throw new Error(
-        'Reservation was created, but the reservation ID was not returned.'
-      );
-    }
-
-    const reservationId = data.reservation_id;
-
-    console.log('Reservation created:', reservationId);
-
-    toast.success('Reservation created!', {
-      description: 'Check your email for the verification code.',
-    });
-
-    navigate(`/reservation/verify/${reservationId}`);
-  } catch (error: any) {
-    console.error('Reservation submission failed:', error);
-
-    toast.error('Reservation failed', {
-      description:
-        error?.message ||
-        'Something went wrong while creating your reservation.',
-    });
-  } finally {
-    setIsSubmitting(false);
-  }
-};
   if (!cafe) return <div className="min-h-screen bg-background flex items-center justify-center"><Coffee className="w-6 h-6 text-primary animate-pulse" /></div>;
 
   return (
@@ -404,29 +411,91 @@ export default function ReservationPage() {
                   <h3 className="font-heading font-semibold text-foreground mb-4">Pre-Order Summary</h3>
                   {cart.map(c => (
                     <div key={c.item.id} className="flex justify-between gap-4">
-                      <span className="text-muted-foreground">{c.qty}x {c.item.name}</span>
+                      <span className="text-muted-foreground">{c.qty}× {c.item.name}</span>
                       <span className="text-foreground text-right">ETB {(c.item.price || 0) * c.qty}</span>
                     </div>
                   ))}
-                  <div className="pt-3 border-t border-border/50 flex justify-between gap-4 font-medium mt-3">
-                    <span className="text-foreground">Subtotal</span>
-                    <span className="text-primary text-right">ETB {cartTotal}</span>
-                  </div>
-                  <div className="flex justify-between gap-4 text-muted-foreground">
-                    <span>Tax (15%)</span>
-                    <span>ETB {(cartTotal * 0.15).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between gap-4 font-bold text-foreground text-base mt-2 pt-2 border-t border-border/50">
-                    <span>Total Estimate</span>
-                    <span className="text-primary text-right">ETB {(cartTotal * 1.15).toFixed(2)}</span>
+                  <div className="pt-3 border-t border-border/50 space-y-1.5 mt-3 text-sm">
+                    <div className="flex justify-between gap-4 text-muted-foreground">
+                      <span>Subtotal</span>
+                      <span>ETB {cartTotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between gap-4 text-muted-foreground">
+                      <span>Tax (15%)</span>
+                      <span>ETB {cartTax.toFixed(2)}</span>
+                    </div>
+
+                    {/* Loyalty redemption picker */}
+                    <div className="pt-3">
+                      <RedemptionPicker
+                        orderTotal={cartGross}
+                        appliedCode={appliedRedemptionCode}
+                        appliedDiscount={appliedRedemptionDiscount}
+                        onApply={(code, discount) => {
+                          setAppliedRedemptionCode(code);
+                          setAppliedRedemptionDiscount(discount);
+                        }}
+                        onClear={() => {
+                          setAppliedRedemptionCode(null);
+                          setAppliedRedemptionDiscount(0);
+                        }}
+                      />
+                    </div>
+
+                    {loyaltyDiscount > 0 && (
+                      <div className="flex justify-between gap-4 text-primary font-semibold pt-1">
+                        <span>Reward Credit</span>
+                        <span>− ETB {loyaltyDiscount.toFixed(2)}</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between gap-4 font-bold text-foreground text-base mt-2 pt-2 border-t border-border/50">
+                      <span>{isZeroPay ? 'Total (Fully Covered)' : 'Total Estimate'}</span>
+                      <span className="text-primary text-right">
+                        {isZeroPay ? 'ETB 0.00 ☕' : `ETB ${cartFinalTotal.toFixed(2)}`}
+                      </span>
+                    </div>
+
+                    {isZeroPay && (
+                      <div className="flex items-center gap-2 text-xs text-primary bg-primary/8 border border-primary/20 rounded-lg px-3 py-2 mt-1">
+                        <Gift className="w-3.5 h-3.5 shrink-0" />
+                        Your loyalty rewards cover this pre-order in full!
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
+              {/* Loyalty reward option when no pre-order (e.g. just a table booking fee) */}
+              {(!wantsPreorder || cart.length === 0) && (
+                <div className="glass rounded-xl p-4 space-y-2">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Gift className="w-4 h-4 text-primary" /> Apply Reward
+                  </h3>
+                  <RedemptionPicker
+                    orderTotal={0}
+                    appliedCode={appliedRedemptionCode}
+                    appliedDiscount={appliedRedemptionDiscount}
+                    onApply={(code, discount) => {
+                      setAppliedRedemptionCode(code);
+                      setAppliedRedemptionDiscount(discount);
+                    }}
+                    onClear={() => {
+                      setAppliedRedemptionCode(null);
+                      setAppliedRedemptionDiscount(0);
+                    }}
+                  />
+                </div>
+              )}
+
               <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setStep(3)} className="border-border"><ChevronLeft className="w-4 h-4 mr-1" /> Back</Button>
+                <Button variant="outline" onClick={() => setStep(3)} className="border-border">
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Back
+                </Button>
                 <Button onClick={handleSubmit} disabled={isSubmitting} className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90">
-                  {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Booking…</> : 'Confirm Reservation'}
+                  {isSubmitting
+                    ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Booking…</>
+                    : 'Confirm Reservation'}
                 </Button>
               </div>
             </motion.div>

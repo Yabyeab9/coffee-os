@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Coffee, Image, Users, BookOpen, Calendar,
-  Settings, ChevronLeft, ChevronRight, Sparkles, LogOut,
+  Settings, ChevronLeft, ChevronRight, LogOut,
   BarChart2, FileText, Megaphone, Globe, Menu, X, Bell,
   ChevronDown, TrendingUp, ShoppingBag, CreditCard, QrCode, Heart,
-  Brain, LineChart, Zap, Lightbulb
+  Brain, LineChart, Zap, Lightbulb, Trophy, AlertTriangle,
+  UserCheck, Target,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { label: 'Live Order Queue', href: '/dashboard/orders', icon: ShoppingBag, badge: 'Live' },
       { label: 'Menu Catalog', href: '/dashboard/menus', icon: Coffee },
       { label: 'Reservations', href: '/dashboard/reservations', icon: Calendar },
+      { label: 'Payments', href: '/dashboard/payments', icon: CreditCard },
       { label: 'QR Scanner', href: '/dashboard/scanner', icon: QrCode },
       { label: 'Store Operations', href: '/dashboard/store-ops', icon: Settings },
     ],
@@ -61,19 +63,26 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     ],
   },
   {
+    title: 'Customer Intelligence',
+    items: [
+      { label: 'Financial Health', href: '/dashboard/financial-health', icon: TrendingUp },
+      { label: 'Anomaly Detection', href: '/dashboard/anomalies', icon: AlertTriangle },
+      { label: 'Recovery Engine', href: '/dashboard/recovery', icon: UserCheck },
+      { label: 'CLV & Retention', href: '/dashboard/customer-intelligence', icon: Target },
+    ],
+  },
+  {
+    title: 'Customer Experience',
+    items: [
+      { label: 'Gamification', href: '/dashboard/gamification', icon: Trophy },
+    ],
+  },
+  {
     title: 'Content',
     items: [
       { label: 'Gallery', href: '/dashboard/gallery', icon: Image },
       { label: 'Blog', href: '/dashboard/blog', icon: BookOpen },
-      { label: 'Pages', href: '/dashboard/pages', icon: FileText },
-      { label: 'Testimonials', href: '/dashboard/testimonials', icon: Users },
       { label: 'Announcements', href: '/dashboard/announcements', icon: Megaphone },
-    ],
-  },
-  {
-    title: 'AI Studio',
-    items: [
-      { label: 'AI Studio', href: '/dashboard/ai-studio', icon: Sparkles, badge: 'New' },
     ],
   },
   {
@@ -134,7 +143,7 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
             <Coffee className="w-4 h-4 text-primary" />
           </div>
           {!collapsed && (
-            <span className="font-heading font-semibold text-sm text-foreground tracking-tight">Coffee OS</span>
+            <span className="font-heading font-semibold text-sm text-foreground tracking-tight">Abat Coffee</span>
           )}
         </Link>
       </div>

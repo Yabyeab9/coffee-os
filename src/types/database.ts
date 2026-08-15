@@ -88,6 +88,12 @@ export interface MenuCategory {
   image_url: string | null;
   sort_order: number;
   created_at: string;
+  
+  icon?: string | null;
+  color?: string | null;
+  visibility?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface MenuItem {
@@ -109,6 +115,25 @@ export interface MenuItem {
   sort_order: number;
   created_at: string;
   updated_at: string;
+  
+  // New Admin Menu Fields
+  preparation_time?: number;
+  ingredients?: string[];
+  allergens?: string[];
+  nutrition?: any;
+  images?: string[];
+  seasonal?: boolean;
+  visibility?: string;
+  inventory_tracking?: boolean;
+  stock_quantity?: number;
+  low_stock_threshold?: number;
+  ai_metadata?: any;
+  recommended_pairings?: string[];
+  availability_schedule?: any;
+  custom_fields?: any;
+  status?: string;
+  deleted_at?: string | null;
+
   // joined
   category?: MenuCategory;
 }
