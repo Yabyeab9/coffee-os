@@ -164,7 +164,7 @@ export default function SeoAdminPage() {
             {(form.title || form.description) && (
               <div className="glass rounded-xl p-4 space-y-1">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Google Preview</p>
-                <p className="text-sm text-info truncate">{form.canonical || 'https://origincoffee.com' + form.page_slug}</p>
+                <p className="text-sm text-info truncate">{form.canonical || `https://yourcafe.com` + form.page_slug}</p>
                 <p className="text-base font-medium text-foreground">{form.title || 'Page Title'}</p>
                 <p className="text-sm text-muted-foreground line-clamp-2">{form.description || 'Meta description will appear here.'}</p>
               </div>

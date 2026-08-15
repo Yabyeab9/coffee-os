@@ -1,13 +1,23 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
-import { Coffee, LayoutDashboard, ShoppingBag, Calendar, Heart, User, Bell, LogOut, Menu, X, Settings } from 'lucide-react';
+import { Coffee, LayoutDashboard, ShoppingBag, Calendar, Heart, User, Bell, LogOut, Menu, X, Settings, Flame, Trophy } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 const NAV_ITEMS = [
   { name: 'Dashboard', path: '/account', icon: LayoutDashboard },
   { name: 'Orders', path: '/account/orders', icon: ShoppingBag },
   { name: 'Reservations', path: '/account/reservations', icon: Calendar },
-  { name: 'Favorites', path: '/account/favorites', icon: Heart },
+  { name: 'Membership Card', path: '/account/membership-card', icon: User },
+  { name: 'Wallet', path: '/account/wallet', icon: ShoppingBag },
+  { name: 'Digital Receipts', path: '/account/receipts', icon: LayoutDashboard },
+  { name: 'Loyalty & Rewards', path: '/account/loyalty', icon: Heart },
+  { name: 'Coffee Journey', path: '/account/gamified-loyalty', icon: Flame },
+  { name: 'Achievements', path: '/account/achievements', icon: Trophy },
+  { name: 'Leaderboard', path: '/account/leaderboard', icon: LayoutDashboard },
+  { name: 'Subscriptions', path: '/account/subscriptions', icon: Coffee },
+  { name: 'AI Barista', path: '/account/ai-recommendations', icon: Coffee },
+  { name: 'Referrals', path: '/account/referrals', icon: User },
+  { name: 'Streaks', path: '/account/streaks', icon: Calendar },
   { name: 'Profile', path: '/account/profile', icon: User },
   { name: 'Notifications', path: '/account/notifications', icon: Bell },
   { name: 'Settings', path: '/account/settings', icon: Settings },
@@ -32,7 +42,7 @@ export default function AccountLayout() {
           <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
             <Coffee className="w-4 h-4 text-primary" />
           </div>
-          <span className="font-heading font-semibold text-foreground">Coffee OS</span>
+          <span className="font-heading font-semibold text-foreground">Abat Coffee</span>
         </Link>
         <button onClick={() => setMobileOpen(!mobileOpen)} className="p-2 text-muted-foreground hover:text-foreground">
           {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -46,7 +56,7 @@ export default function AccountLayout() {
             <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
               <Coffee className="w-4 h-4 text-primary" />
             </div>
-            <span className="font-heading font-semibold text-foreground">Coffee OS</span>
+            <span className="font-heading font-semibold text-foreground">Abat Coffee</span>
           </Link>
         </div>
 
@@ -55,13 +65,12 @@ export default function AccountLayout() {
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">My Account</p>
           </div>
           {NAV_ITEMS.map((item) => {
-            const isActive = location.pathname === item.path;
             return (
               <NavLink
                 key={item.name}
                 to={item.path}
                 onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                 }`}
                 end={item.path === '/account'}

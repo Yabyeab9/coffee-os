@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { getCafeBySlug, getGallery, getAnnouncements } from '@/lib/api';
 import type { Cafe, GalleryItem, Announcement } from '@/types/database';
 
-const CAFE_SLUG = 'origin';
+import { getCafeSlug } from '@/lib/cafe-config';
+const CAFE_SLUG = getCafeSlug();
 const ALL_CATEGORIES = ['all', 'interior', 'craft', 'beans', 'space', 'menu'];
 
 export default function GalleryPage() {
@@ -53,7 +54,7 @@ export default function GalleryPage() {
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
           <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">Visual Story</p>
           <h1 className="text-4xl md:text-5xl font-heading font-semibold text-foreground mb-3">Gallery</h1>
-          <p className="text-muted-foreground max-w-lg">A glimpse into the space, the craft, and the coffee that defines Origin.</p>
+          <p className="text-muted-foreground max-w-lg">A glimpse into the space, the craft, and the coffee that defines {cafe.name}.</p>
         </motion.div>
       </section>
 

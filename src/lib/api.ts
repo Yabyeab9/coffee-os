@@ -390,3 +390,53 @@ export async function getReservationTrend(cafeId: string): Promise<{ date: strin
 
   return Object.entries(counts).map(([date, count]) => ({ date, count }));
 }
+
+export async function getOrders(cafeId: string) {
+  return await supabase
+    .from('orders')
+    .select('*, users(full_name, email), order_items(*, menus(name, preparation_time))')
+    .eq('cafe_id', cafeId)
+    .order('created_at', { ascending: false });
+}
+
+export async function getActiveOrders(cafeId: string) {
+  return await supabase
+    .from('orders')
+    .select('*, users(full_name, email), order_items(*, menus(name, preparation_time))')
+    .eq('cafe_id', cafeId)
+    .in('order_status', ['pending', 'preparing', 'ready'])
+    .order('created_at', { ascending: true });
+}
+
+export async function updateOrderStatus(id: string, status: string) {
+  const { error } = await supabase
+    .from('orders')
+    .update({ order_status: status, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function adminUpdateOrderStatus(orderId: string, newStatus: string, adminNotes?: string) {
+  const { data, error } = await supabase.rpc('admin_update_order_status', {
+    p_order_id: orderId,
+    p_new_status: newStatus,
+    p_admin_notes: adminNotes ?? null,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function getAdminQueueStats(cafeId: string) {
+  const { data, error } = await supabase.rpc('get_admin_queue_stats', { p_cafe_id: cafeId });
+  if (error) throw error;
+  return data as {
+    pending_count: number;
+    preparing_count: number;
+    ready_count: number;
+    completed_today: number;
+    cancelled_today: number;
+    avg_prep_minutes: number | null;
+    delayed_count: number;
+    longest_waiting_minutes: number | null;
+  };
+}

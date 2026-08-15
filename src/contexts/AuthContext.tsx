@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import type { User, UserRole } from '@/types/database';
@@ -13,7 +13,7 @@ interface AuthContextValue {
   isOwner: boolean;
   isEditor: boolean;
   isCustomer: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: string | null; profile?: any | null }>;
   signInWithGoogle: (redirectTo?: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -22,52 +22,118 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+// Atomically set session + profile + isLoading in one render to eliminate
+// the race window where session=value, profile=null, isLoading=false.
+interface AuthState {
+  session: Session | null;
+  profile: User | null;
+  isLoading: boolean;
+}
 
-  const fetchProfile = useCallback(async (userId: string) => {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [authState, setAuthState] = useState<AuthState>({
+    session: null,
+    profile: null,
+    isLoading: true,
+  });
+
+  // Track whether initializeAuth has completed so onAuthStateChange
+  // doesn't redundantly re-run for the INITIAL_SESSION.
+  const initDone = useRef(false);
+
+  const fetchProfileData = useCallback(async (userId: string): Promise<User | null> => {
     const { data } = await supabase
       .from('users')
       .select('*')
       .eq('id', userId)
       .maybeSingle();
-    setProfile(data);
+    return data ?? null;
   }, []);
 
   const refreshProfile = useCallback(async () => {
-    if (session?.user?.id) {
-      await fetchProfile(session.user.id);
-    }
-  }, [session, fetchProfile]);
+    const userId = authState.session?.user?.id;
+    if (!userId) return;
+    const profile = await fetchProfileData(userId);
+    setAuthState(prev => ({ ...prev, profile }));
+  }, [authState.session, fetchProfileData]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session?.user?.id) {
-        fetchProfile(session.user.id).finally(() => setIsLoading(false));
-      } else {
-        setIsLoading(false);
-      }
-    });
+    let mounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      if (session?.user?.id) {
-        await fetchProfile(session.user.id);
-      } else {
-        setProfile(null);
+    // Safety timeout: unblock the UI if auth init stalls (e.g. network dead)
+    const safetyTimer = setTimeout(() => {
+      if (mounted && !initDone.current) {
+        setAuthState(prev => ({ ...prev, isLoading: false }));
       }
-      setIsLoading(false);
-    });
+    }, 6000);
 
-    return () => subscription.unsubscribe();
-  }, [fetchProfile]);
+    const initializeAuth = async () => {
+      try {
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+
+        if (!mounted) return;
+
+        if (initialSession?.user?.id) {
+          const profile = await fetchProfileData(initialSession.user.id);
+          if (mounted) {
+            // Atomic: session + profile + isLoading=false in one setState call
+            setAuthState({ session: initialSession, profile, isLoading: false });
+          }
+        } else {
+          if (mounted) {
+            setAuthState({ session: null, profile: null, isLoading: false });
+          }
+        }
+      } catch (err) {
+        console.error('Auth initialization error:', err);
+        if (mounted) {
+          setAuthState(prev => ({ ...prev, isLoading: false }));
+        }
+      } finally {
+        clearTimeout(safetyTimer);
+        initDone.current = true;
+      }
+    };
+
+    initializeAuth();
+
+    // Listen for post-init auth events (login, logout, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, currentSession) => {
+        if (!mounted) return;
+
+        // INITIAL_SESSION fires synchronously during getSession() — skip it
+        // because initializeAuth already handles the initial state.
+        if (event === 'INITIAL_SESSION') return;
+
+        // For SIGNED_OUT: clear state atomically, no profile fetch needed
+        if (!currentSession) {
+          setAuthState({ session: null, profile: null, isLoading: false });
+          return;
+        }
+
+        // For SIGNED_IN / TOKEN_REFRESHED: fetch profile, then set atomically
+        // Never expose an intermediate state where session is set but profile is null.
+        const profile = await fetchProfileData(currentSession.user.id);
+        if (mounted) {
+          setAuthState({ session: currentSession, profile, isLoading: false });
+        }
+      }
+    );
+
+    return () => {
+      mounted = false;
+      clearTimeout(safetyTimer);
+      subscription.unsubscribe();
+    };
+  }, [fetchProfileData]);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error || !data.user) return { error: error?.message ?? null, profile: null };
+    const { data: profile } = await supabase.from('users').select('*').eq('id', data.user.id).maybeSingle();
+    return { error: null, profile };
   };
 
   const signInWithGoogle = async (redirectTo?: string) => {
@@ -86,15 +152,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       options: { data: { full_name: fullName } },
     });
     if (error) return { error: error.message };
-    // Trigger automatically handles user row creation
+
+    // If a referral code was in the URL (?ref=CODE), apply it after sign-up
+    const params = new URLSearchParams(window.location.search);
+    const refCode = params.get('ref');
+    if (refCode && data?.user?.id) {
+      try {
+        const { data: sess } = await supabase.auth.getSession();
+        if (sess?.session?.access_token) {
+          await supabase.functions.invoke('loyalty-engine', {
+            body: { action: 'apply_referral_code', payload: { referral_code: refCode } },
+          });
+        }
+      } catch {
+        // non-fatal
+      }
+    }
+
     return { error: null };
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setProfile(null);
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error('Logout error:', e);
+    } finally {
+      // Atomic clear before redirect
+      setAuthState({ session: null, profile: null, isLoading: false });
+      localStorage.clear();
+      sessionStorage.clear();
+      setTimeout(() => {
+        window.location.href = '/login?logged_out=true';
+      }, 50);
+    }
   };
 
+  const { session, profile, isLoading } = authState;
   const role = profile?.role ?? null;
   const cafeId = profile?.cafe_id ?? null;
 

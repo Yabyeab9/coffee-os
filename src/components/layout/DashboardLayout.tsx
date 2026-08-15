@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Coffee, Image, Users, BookOpen, Calendar,
-  Settings, ChevronLeft, ChevronRight, Sparkles, LogOut,
+  Settings, ChevronLeft, ChevronRight, LogOut,
   BarChart2, FileText, Megaphone, Globe, Menu, X, Bell,
-  ChevronDown,
+  ChevronDown, TrendingUp, ShoppingBag, CreditCard, QrCode, Heart,
+  Brain, LineChart, Zap, Lightbulb, Trophy, AlertTriangle,
+  UserCheck, Target,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -34,36 +36,61 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     items: [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart2 },
+      { label: 'Growth', href: '/dashboard/growth', icon: TrendingUp },
+      { label: 'Promotions', href: '/dashboard/promotions', icon: Megaphone },
+    ],
+  },
+  {
+    title: 'Management',
+    items: [
+      { label: 'Live Order Queue', href: '/dashboard/orders', icon: ShoppingBag, badge: 'Live' },
+      { label: 'Menu Catalog', href: '/dashboard/menus', icon: Coffee },
+      { label: 'Reservations', href: '/dashboard/reservations', icon: Calendar },
+      { label: 'Payments', href: '/dashboard/payments', icon: CreditCard },
+      { label: 'QR Scanner', href: '/dashboard/scanner', icon: QrCode },
+      { label: 'Store Operations', href: '/dashboard/store-ops', icon: Settings },
+    ],
+  },
+  {
+    title: 'Operational Intelligence',
+    items: [
+      { label: 'AI Manager', href: '/dashboard/ai-manager', icon: Brain },
+      { label: 'Forecasts', href: '/dashboard/forecasts', icon: LineChart },
+      { label: 'Smart Promos', href: '/dashboard/smart-promos', icon: Zap },
+      { label: 'Intelligence', href: '/dashboard/intelligence', icon: Lightbulb },
+      { label: 'Dashboards', href: '/dashboard/exec-dashboards', icon: LayoutDashboard },
+      { label: 'Reports & Health', href: '/dashboard/reports-health', icon: FileText },
+    ],
+  },
+  {
+    title: 'Customer Intelligence',
+    items: [
+      { label: 'Financial Health', href: '/dashboard/financial-health', icon: TrendingUp },
+      { label: 'Anomaly Detection', href: '/dashboard/anomalies', icon: AlertTriangle },
+      { label: 'Recovery Engine', href: '/dashboard/recovery', icon: UserCheck },
+      { label: 'CLV & Retention', href: '/dashboard/customer-intelligence', icon: Target },
+    ],
+  },
+  {
+    title: 'Customer Experience',
+    items: [
+      { label: 'Gamification', href: '/dashboard/gamification', icon: Trophy },
     ],
   },
   {
     title: 'Content',
     items: [
-      { label: 'Menus', href: '/dashboard/menus', icon: Coffee },
       { label: 'Gallery', href: '/dashboard/gallery', icon: Image },
       { label: 'Blog', href: '/dashboard/blog', icon: BookOpen },
-      { label: 'Pages', href: '/dashboard/pages', icon: FileText },
-      { label: 'Testimonials', href: '/dashboard/testimonials', icon: Users },
-    ],
-  },
-  {
-    title: 'Operations',
-    items: [
-      { label: 'Reservations', href: '/dashboard/reservations', icon: Calendar },
       { label: 'Announcements', href: '/dashboard/announcements', icon: Megaphone },
-      { label: 'SEO', href: '/dashboard/seo', icon: Globe },
     ],
   },
   {
-    title: 'AI Studio',
+    title: 'System',
     items: [
-      { label: 'AI Studio', href: '/dashboard/ai-studio', icon: Sparkles, badge: 'New' },
-    ],
-  },
-  {
-    title: 'Account',
-    items: [
+      { label: 'Loyalty Config', href: '/dashboard/loyalty', icon: Heart },
       { label: 'Users', href: '/dashboard/users', icon: Users },
+      { label: 'SEO', href: '/dashboard/seo', icon: Globe },
       { label: 'Settings', href: '/dashboard/settings', icon: Settings },
     ],
   },
@@ -116,7 +143,7 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
             <Coffee className="w-4 h-4 text-primary" />
           </div>
           {!collapsed && (
-            <span className="font-heading font-semibold text-sm text-foreground tracking-tight">Coffee OS</span>
+            <span className="font-heading font-semibold text-sm text-foreground tracking-tight">Abat Coffee</span>
           )}
         </Link>
       </div>

@@ -3,6 +3,7 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Coffee, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { getRedirectPathByRole } from '@/lib/auth-helpers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,7 +13,7 @@ type AuthMode = 'login' | 'signup';
 
 export default function LoginPage() {
   const [searchParams] = useSearchParams();
-  const returnTo = searchParams.get('returnTo') || '/dashboard';
+  const returnTo = searchParams.get('returnTo');
   
   const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
@@ -25,7 +26,8 @@ export default function LoginPage() {
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
-    const { error } = await signInWithGoogle(`${window.location.origin}${returnTo}`);
+    const dest = returnTo || '/account';
+    const { error } = await signInWithGoogle(`${window.location.origin}${dest}`);
     if (error) {
       toast.error('Google sign-in failed', { description: error });
       setIsLoading(false);
@@ -39,12 +41,13 @@ export default function LoginPage() {
 
     try {
       if (mode === 'login') {
-        const { error } = await signIn(email, password);
+        const { error, profile } = await signIn(email, password);
         if (error) {
           toast.error('Sign-in failed', { description: error });
         } else {
           toast.success('Welcome back!');
-          navigate(returnTo);
+          const dest = returnTo || getRedirectPathByRole(profile?.role);
+          navigate(dest);
         }
       } else {
         if (!fullName) { toast.error('Please enter your full name'); return; }
@@ -72,14 +75,12 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-gradient-to-br from-background/95 via-background/70 to-background/30" />
         <div className="relative z-10 flex flex-col justify-between h-full p-12">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-              <Coffee className="w-4 h-4 text-primary" />
-            </div>
-            <span className="font-heading font-semibold text-foreground">Coffee OS</span>
+            
+            
           </div>
           <div>
             <h1 className="text-4xl font-heading font-semibold text-foreground leading-tight mb-4">
-              Your café.<br />
+              Abat Coffee<br />
               <span className="gradient-text">Fully elevated.</span>
             </h1>
             <p className="text-muted-foreground leading-relaxed max-w-sm">
@@ -98,12 +99,7 @@ export default function LoginPage() {
           className="w-full max-w-md"
         >
           {/* Mobile logo */}
-          <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-              <Coffee className="w-4 h-4 text-primary" />
-            </div>
-            <span className="font-heading font-semibold text-foreground">Coffee OS</span>
-          </div>
+          
 
           <div className="mb-8">
             <h2 className="text-2xl font-heading font-semibold text-foreground mb-1">

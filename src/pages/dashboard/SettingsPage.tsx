@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Save, Loader2, Coffee, Clock, Link2, Image, Bell, MapPin, Mail, Phone, Globe } from 'lucide-react';
+import { Save, Loader2, Coffee, Clock, Link2, Image, Bell, MapPin, Mail, Phone, Globe, CalendarRange } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getCafeBySlug, getAllCafes, updateCafe, getOpeningHours, upsertOpeningHours } from '@/lib/api';
 import type { Cafe, OpeningHours } from '@/types/database';
@@ -8,11 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 
-const DEMO_CAFE_ID = '00000000-0000-0000-0000-000000000001';
-const CAFE_SLUG = 'origin';
+
+import { getCafeSlug } from '@/lib/cafe-config';
+const CAFE_SLUG = getCafeSlug();
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export default function SettingsPage() {
@@ -28,6 +30,12 @@ export default function SettingsPage() {
     name: '', tagline: '', description: '', phone: '', email: '',
     address: '', city: '', logo_url: '', cover_url: '',
     instagram_url: '', facebook_url: '', twitter_url: '', tiktok_url: '',
+  });
+
+  const [settingsForm, setSettingsForm] = useState({
+    reservation_payment_mode: 'free_reservation',
+    deposit_percentage: 0,
+    cancellation_window: 24,
   });
 
   const load = useCallback(async () => {
@@ -84,6 +92,12 @@ export default function SettingsPage() {
       facebook_url: form.facebook_url || null,
       twitter_url: form.twitter_url || null,
       tiktok_url: form.tiktok_url || null,
+      settings: {
+        ...(cafe.settings as any || {}),
+        reservation_payment_mode: settingsForm.reservation_payment_mode,
+        deposit_percentage: settingsForm.deposit_percentage,
+        cancellation_window: settingsForm.cancellation_window,
+      }
     });
     setSaving(false);
     if (error) { toast.error('Failed to save settings', { description: error }); return; }
@@ -216,6 +230,63 @@ export default function SettingsPage() {
       </Button>
 
       <Separator className="bg-border/50" />
+
+      {/* Reservation Settings */}
+      <section className="glass rounded-xl p-6 space-y-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <CalendarRange className="w-4 h-4 text-primary" />
+            <h2 className="font-heading font-semibold text-foreground">Reservation Settings</h2>
+          </div>
+          <Button onClick={handleSaveCafe} disabled={saving} size="sm">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+            Save Policy
+          </Button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-1.5">
+            <Label className="text-sm text-muted-foreground">Payment Policy</Label>
+            <Select 
+              value={settingsForm.reservation_payment_mode} 
+              onValueChange={(val) => setSettingsForm(f => ({ ...f, reservation_payment_mode: val }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select Policy" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="free_reservation">Free Reservation</SelectItem>
+                <SelectItem value="deposit_required">Deposit Required</SelectItem>
+                <SelectItem value="full_payment_required">Full Payment Required</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {settingsForm.reservation_payment_mode === 'deposit_required' && (
+            <div className="space-y-1.5">
+              <Label className="text-sm text-muted-foreground">Deposit Percentage (%)</Label>
+              <Input 
+                type="number" 
+                min={1} max={100}
+                value={settingsForm.deposit_percentage} 
+                onChange={e => setSettingsForm(f => ({ ...f, deposit_percentage: parseInt(e.target.value) || 0 }))} 
+                className="bg-input border-border" 
+              />
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <Label className="text-sm text-muted-foreground">Cancellation Window (Hours)</Label>
+            <Input 
+              type="number" 
+              min={0}
+              value={settingsForm.cancellation_window} 
+              onChange={e => setSettingsForm(f => ({ ...f, cancellation_window: parseInt(e.target.value) || 0 }))} 
+              className="bg-input border-border" 
+            />
+            <p className="text-xs text-muted-foreground mt-1">Minimum hours required for free cancellation.</p>
+          </div>
+        </div>
+      </section>
 
       {/* Opening Hours */}
       <section className="glass rounded-xl p-6 space-y-4">

@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ArrowLeft, Calendar, Tag, Clock } from 'lucide-react';
 import { getBlogPostBySlug } from '@/lib/api';
+import { useCafe } from '@/hooks/queries';
 import type { BlogPost } from '@/types/database';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,24 +12,28 @@ import { PublicLayout } from '@/components/layout/PublicLayout';
 export default function BlogPostDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const [post, setPost] = useState<BlogPost | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isFetchingPost, setIsFetchingPost] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
+  const { data: cafeData, isLoading: cafeLoading } = useCafe();
+
   useEffect(() => {
-    if (!slug) return;
+    if (!slug || !cafeData) return;
     async function load() {
-      setIsLoading(true);
-      const data = await getBlogPostBySlug('origin', slug!);
+      setIsFetchingPost(true);
+      const data = await getBlogPostBySlug(cafeData!.id, slug!);
       if (!data) setNotFound(true);
       else setPost(data);
-      setIsLoading(false);
+      setIsFetchingPost(false);
     }
     load();
-  }, [slug]);
+  }, [slug, cafeData]);
+
+  const isLoading = cafeLoading || isFetchingPost;
 
   if (isLoading) {
     return (
-      <PublicLayout>
+      <PublicLayout cafe={cafeData}>
         <article className="max-w-3xl mx-auto px-4 py-16 space-y-6">
           <Skeleton className="h-8 w-2/3 bg-muted" />
           <Skeleton className="aspect-[16/9] w-full rounded-2xl bg-muted" />
@@ -42,7 +47,7 @@ export default function BlogPostDetailPage() {
 
   if (notFound || !post) {
     return (
-      <PublicLayout>
+      <PublicLayout cafe={cafeData}>
         <div className="max-w-3xl mx-auto px-4 py-24 text-center text-muted-foreground">
           <p className="text-2xl font-heading font-semibold mb-4">Post Not Found</p>
           <p className="mb-8">The article you're looking for doesn't exist or has been removed.</p>
@@ -57,7 +62,7 @@ export default function BlogPostDetailPage() {
   const readTime = post.content ? Math.ceil(post.content.split(' ').length / 200) : 3;
 
   return (
-    <PublicLayout>
+    <PublicLayout cafe={cafeData}>
       <article className="max-w-3xl mx-auto px-4 py-16">
         {/* Back */}
         <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
@@ -117,7 +122,7 @@ export default function BlogPostDetailPage() {
               ))}
             </div>
           ) : (
-            <p className="text-muted-foreground">Full content coming soon.</p>
+            <p className="text-muted-foreground italic">No content has been added to this post yet.</p>
           )}
         </motion.div>
 

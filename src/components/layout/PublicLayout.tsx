@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Menu, X, Coffee, Instagram, Facebook, MapPin, Phone, Mail, Clock } from 'lucide-react';
+import { Menu, X, Coffee, Instagram, Facebook, MapPin, Phone, Mail, Clock, User as UserIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { getRedirectPathByRole } from '@/lib/auth-helpers';
 import type { Cafe, Announcement } from '@/types/database';
 
 interface PublicLayoutProps {
@@ -20,23 +22,13 @@ const NAV_LINKS = [
 ];
 
 
-const FALLBACK_CAFE: Partial<Cafe> = {
-  name: 'Origin Coffee',
-  logo_url: null,
-  tagline: 'Specialty coffee rooted in Ethiopia.',
-  instagram_url: null,
-  facebook_url: null,
-  address: 'Bole Road, Friendship Square',
-  city: 'Addis Ababa',
-  phone: '+251 91 123 4567',
-  email: 'hello@origincoffee.et',
-};
+const FALLBACK_CAFE = null;
 
 export function PublicLayout({ cafe: cafeProp, announcements = [], children }: PublicLayoutProps) {
-  const cafe = (cafeProp ?? FALLBACK_CAFE) as Cafe;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
+  const { session, profile, role } = useAuth();
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
@@ -46,6 +38,15 @@ export function PublicLayout({ cafe: cafeProp, announcements = [], children }: P
 
   useEffect(() => { setMobileOpen(false); }, [location.pathname]);
 
+  if (!cafeProp) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Coffee className="w-8 h-8 text-primary animate-pulse" />
+      </div>
+    );
+  }
+  
+  const cafe = cafeProp as Cafe;
   const activeAnnouncement = announcements.find(a => a.is_active);
 
   return (
@@ -98,6 +99,20 @@ export function PublicLayout({ cafe: cafeProp, announcements = [], children }: P
 
           {/* CTA + Mobile toggle */}
           <div className="flex items-center gap-2">
+            {session ? (
+              <Link to={getRedirectPathByRole(role)} className="hidden md:flex items-center gap-2 text-sm text-foreground hover:bg-secondary px-3 py-2 rounded-md transition-colors">
+                <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                  {profile?.full_name?.charAt(0).toUpperCase() || <UserIcon className="w-3 h-3" />}
+                </div>
+                <span className="max-w-[100px] truncate">{profile?.full_name || 'My Account'}</span>
+              </Link>
+            ) : (
+              <Link to="/login" className="hidden md:block">
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-secondary mr-2">
+                  Log in
+                </Button>
+              </Link>
+            )}
             <Link to="/reservation" className="hidden md:block">
               <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 glow-primary">
                 Reserve a Table
@@ -136,6 +151,18 @@ export function PublicLayout({ cafe: cafeProp, announcements = [], children }: P
                     {link.label}
                   </Link>
                 ))}
+                
+                {session ? (
+                  <Link to={getRedirectPathByRole(role)} className="px-3 py-3 text-sm text-foreground hover:bg-secondary rounded-md transition-colors flex items-center gap-2">
+                    <UserIcon className="w-4 h-4 text-primary" />
+                    My Account
+                  </Link>
+                ) : (
+                  <Link to="/login" className="px-3 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors">
+                    Log in
+                  </Link>
+                )}
+                
                 <Link to="/reservation" className="mt-2">
                   <Button className="w-full bg-primary text-primary-foreground">Reserve a Table</Button>
                 </Link>
