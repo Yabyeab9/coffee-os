@@ -55,6 +55,7 @@ import AccountSettingsPage from './pages/account/SettingsPage';
 import LoyaltyPage from './pages/account/LoyaltyPage';
 import SubscriptionsPage from './pages/account/SubscriptionsPage';
 import AiRecommendationsPage from './pages/account/AiRecommendationsPage';
+import MoodPulsePage from './pages/account/MoodPulsePage';
 import CoffeeJourneyPage from './pages/account/CoffeeJourneyPage';
 import CoffeePassportPage from './pages/account/CoffeePassportPage';
 import SeasonalDiscoveriesPage from './pages/account/SeasonalDiscoveriesPage';
@@ -117,6 +118,7 @@ export const accountRoutes: RouteConfig[] = [
   { name: 'Leaderboard', path: 'leaderboard', element: <LeaderboardPage /> },
   { name: 'Subscriptions', path: 'subscriptions', element: <SubscriptionsPage /> },
   { name: 'AI Recommendations', path: 'ai-recommendations', element: <AiRecommendationsPage /> },
+  { name: 'Mood Pulse', path: 'mood-pulse', element: <MoodPulsePage /> },
   { name: 'Coffee Journey', path: 'coffee-journey', element: <CoffeeJourneyPage /> },
   { name: 'Coffee Passport', path: 'coffee-passport', element: <CoffeePassportPage /> },
   { name: 'Seasonal Discoveries', path: 'seasonal-discoveries', element: <SeasonalDiscoveriesPage /> },
