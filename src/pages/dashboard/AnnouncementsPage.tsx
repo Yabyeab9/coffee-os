@@ -15,7 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
-const DEMO_CAFE_ID = '00000000-0000-0000-0000-000000000001';
+
 
 const TYPE_STYLES: Record<AnnouncementType, string> = {
   info: 'bg-info/15 text-info border-info/30',
@@ -29,7 +29,7 @@ const DEFAULT: Form = { title: '', content: '', type: 'info', is_active: true, s
 
 export default function AnnouncementsPage() {
   const { cafeId } = useAuth();
-  const resolvedId = cafeId ?? DEMO_CAFE_ID;
+  const resolvedId = cafeId!;
   const [items, setItems] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dialog, setDialog] = useState(false);
@@ -39,9 +39,14 @@ export default function AnnouncementsPage() {
 
   const load = useCallback(async () => {
     setIsLoading(true);
-    const data = await getAnnouncements(resolvedId, false);
-    setItems(data);
-    setIsLoading(false);
+    try {
+      const data = await getAnnouncements(resolvedId, false);
+      setItems(data);
+    } catch (_err) {
+      toast.error('Failed to load announcements');
+    } finally {
+      setIsLoading(false);
+    }
   }, [resolvedId]);
 
   useEffect(() => { load(); }, [load]);
@@ -56,15 +61,20 @@ export default function AnnouncementsPage() {
   const handleSave = async () => {
     if (!form.title) { toast.error('Title is required'); return; }
     setSaving(true);
-    const payload = { cafe_id: resolvedId, title: form.title, content: form.content || null, type: form.type, is_active: form.is_active, starts_at: form.starts_at || null, ends_at: form.ends_at || null };
-    const { error } = editing
-      ? await supabase.from('announcements').update(payload).eq('id', editing.id)
-      : await supabase.from('announcements').insert(payload);
-    setSaving(false);
-    if (error) { toast.error('Failed to save'); return; }
-    toast.success(editing ? 'Updated' : 'Created');
-    setDialog(false);
-    load();
+    try {
+      const payload = { cafe_id: resolvedId, title: form.title, content: form.content || null, type: form.type, is_active: form.is_active, starts_at: form.starts_at || null, ends_at: form.ends_at || null };
+      const { error } = editing
+        ? await supabase.from('announcements').update(payload).eq('id', editing.id)
+        : await supabase.from('announcements').insert(payload);
+      if (error) throw error;
+      toast.success(editing ? 'Updated' : 'Created');
+      setDialog(false);
+      load();
+    } catch (err: any) {
+      toast.error('Failed to save', { description: err.message });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async (id: string) => {

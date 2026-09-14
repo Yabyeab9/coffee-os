@@ -12,9 +12,14 @@ export default function PrivacyPage() {
 
   useEffect(() => {
     async function load() {
-      const c = await getCafeBySlug(getCafeSlug());
-      setCafe(c || null);
-      setIsLoading(false);
+      try {
+        const c = await getCafeBySlug(getCafeSlug());
+        setCafe(c || null);
+      } catch {
+        // non-fatal
+      } finally {
+        setIsLoading(false);
+      }
     }
     load();
   }, []);

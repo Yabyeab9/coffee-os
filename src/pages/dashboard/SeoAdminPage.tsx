@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
-const DEMO_CAFE_ID = '00000000-0000-0000-0000-000000000001';
+
 
 type SeoForm = { page_slug: string; title: string; description: string; keywords: string; og_image_url: string; canonical: string };
 const DEFAULT: SeoForm = { page_slug: '', title: '', description: '', keywords: '', og_image_url: '', canonical: '' };
@@ -20,7 +20,7 @@ const COMMON_PAGES = ['/', '/menu', '/gallery', '/about', '/reservation', '/blog
 
 export default function SeoAdminPage() {
   const { cafeId } = useAuth();
-  const resolvedId = cafeId ?? DEMO_CAFE_ID;
+  const resolvedId = cafeId!;
   const [records, setRecords] = useState<SeoRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dialog, setDialog] = useState(false);
@@ -30,9 +30,14 @@ export default function SeoAdminPage() {
 
   const load = useCallback(async () => {
     setIsLoading(true);
-    const { data } = await supabase.from('seo').select('*').eq('cafe_id', resolvedId).order('page_slug');
-    setRecords(Array.isArray(data) ? data : []);
-    setIsLoading(false);
+    try {
+      const { data } = await supabase.from('seo').select('*').eq('cafe_id', resolvedId).order('page_slug');
+      setRecords(Array.isArray(data) ? data : []);
+    } catch (_err) {
+      toast.error('Failed to load SEO records');
+    } finally {
+      setIsLoading(false);
+    }
   }, [resolvedId]);
 
   useEffect(() => { load(); }, [load]);

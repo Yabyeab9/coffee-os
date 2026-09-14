@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 
-const DEMO_CAFE_ID = '00000000-0000-0000-0000-000000000001';
+
 
 type ItemForm = { image_url: string; caption: string; alt_text: string; category: string; sort_order: number };
 const DEFAULT: ItemForm = { image_url: '', caption: '', alt_text: '', category: '', sort_order: 0 };
@@ -20,7 +20,7 @@ const GALLERY_CATEGORIES = ['all', 'interior', 'craft', 'beans', 'space', 'menu'
 
 export default function GalleryAdminPage() {
   const { cafeId } = useAuth();
-  const resolvedId = cafeId ?? DEMO_CAFE_ID;
+  const resolvedId = cafeId!;
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [activeCategory, setActiveCategory] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
@@ -31,9 +31,14 @@ export default function GalleryAdminPage() {
 
   const load = useCallback(async () => {
     setIsLoading(true);
-    const data = await getGallery(resolvedId);
-    setItems(data);
-    setIsLoading(false);
+    try {
+      const data = await getGallery(resolvedId);
+      setItems(data);
+    } catch (_err) {
+      toast.error('Failed to load gallery');
+    } finally {
+      setIsLoading(false);
+    }
   }, [resolvedId]);
 
   useEffect(() => { load(); }, [load]);
@@ -50,22 +55,27 @@ export default function GalleryAdminPage() {
   const handleSave = async () => {
     if (!form.image_url.trim()) { toast.error('Image URL is required'); return; }
     setSaving(true);
-    const payload = {
-      cafe_id: resolvedId,
-      image_url: form.image_url,
-      caption: form.caption || null,
-      alt_text: form.alt_text || null,
-      category: form.category || null,
-      sort_order: form.sort_order,
-    };
-    const { error } = editing
-      ? await updateGalleryItem(editing.id, payload)
-      : await createGalleryItem(payload);
-    setSaving(false);
-    if (error) { toast.error('Failed to save', { description: error }); return; }
-    toast.success(editing ? 'Image updated' : 'Image added');
-    setDialog(false);
-    load();
+    try {
+      const payload = {
+        cafe_id: resolvedId,
+        image_url: form.image_url,
+        caption: form.caption || null,
+        alt_text: form.alt_text || null,
+        category: form.category || null,
+        sort_order: form.sort_order,
+      };
+      const { error } = editing
+        ? await updateGalleryItem(editing.id, payload)
+        : await createGalleryItem(payload);
+      if (error) throw new Error(error);
+      toast.success(editing ? 'Image updated' : 'Image added');
+      setDialog(false);
+      load();
+    } catch (err: any) {
+      toast.error('Failed to save', { description: err.message });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async (id: string) => {

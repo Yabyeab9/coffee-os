@@ -53,14 +53,26 @@ export default function PaymentSuccessPage() {
         setStatus('failed');
       }
     } else {
-      // Legacy order flow handling
+      // Order payment verification — poll up to 15× (30 s) for payment_status = paid
+      // Never fake success: if DB doesn't confirm paid, show failed so user can retry.
       try {
-        await new Promise(r => setTimeout(r, 2000));
-        const { data } = await supabase.from('orders').select('payment_status').eq('order_number', txRef).single();
-        if (data?.payment_status === 'paid') {
-          setStatus('success');
-        } else {
-          setStatus('success'); // Legacy fallback
+        let verified = false;
+        for (let i = 0; i < 15; i++) {
+          await new Promise(r => setTimeout(r, 2000));
+          const { data, error } = await supabase
+            .from('orders')
+            .select('payment_status, id')
+            .eq('order_number', txRef)
+            .maybeSingle();
+          if (error) throw error;
+          if (data?.payment_status === 'paid') {
+            setStatus('success');
+            verified = true;
+            break;
+          }
+        }
+        if (!verified) {
+          setStatus('failed');
         }
       } catch (err) {
         setStatus('failed');

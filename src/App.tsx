@@ -71,6 +71,7 @@ import AccountSeasonalDiscoveriesPage from '@/pages/account/SeasonalDiscoveriesP
 import AccountBeanExplorerPage from '@/pages/account/BeanExplorerPage';
 import AccountCoffeePersonalityPage from '@/pages/account/CoffeePersonalityPage';
 import AccountTrySomethingNewPage from '@/pages/account/TrySomethingNewPage';
+import MoodPulsePage from './pages/account/MoodPulsePage';
 import AccountCoffeeChallengesPage from '@/pages/account/CoffeeChallengesPage';
 import AccountReferralsPage from '@/pages/account/ReferralsPage';
 import AccountStreaksPage from '@/pages/account/StreaksPage';
@@ -151,6 +152,7 @@ const App: React.FC = () => {
                 <Route path="achievements" element={<AchievementsPage />} />
                 <Route path="leaderboard" element={<LeaderboardPage />} />
                 <Route path="ai-recommendations" element={<AccountAiRecommendationsPage />} />
+                <Route path="mood-pulse" element={<MoodPulsePage />} />
                 <Route path="coffee-journey" element={<AccountCoffeeJourneyPage />} />
                 <Route path="coffee-passport" element={<AccountCoffeePassportPage />} />
                 <Route path="seasonal-discoveries" element={<AccountSeasonalDiscoveriesPage />} />

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Coffee, ShoppingBag, Gift, Tag, ChevronRight, X, AlertCircle, Loader2, Sparkles, Moon, Zap, Heart } from 'lucide-react';
+import { Search, Coffee, ShoppingBag, Gift, Tag, ChevronRight, X, AlertCircle, Loader2, Sparkles, Moon, Zap, Heart, ExternalLink, CheckCircle } from 'lucide-react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { Input } from '@/components/ui/input';
@@ -130,7 +130,8 @@ export default function MenuPage() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Loyalty redemption state (for checkout modal)
+  // Payment path: DIRECT (no redemption) | REDEEMED (loyalty code applied)
+  const [paymentMode, setPaymentMode] = useState<'DIRECT' | 'REDEEMED'>('DIRECT');
   const [appliedRedemptionCode, setAppliedRedemptionCode] = useState<string | null>(null);
   const [appliedRedemptionDiscount, setAppliedRedemptionDiscount] = useState(0);
 
@@ -237,11 +238,302 @@ export default function MenuPage() {
   const totalAmount     = Math.max(0, grossTotal - loyaltyDiscount);
   const isZeroPay       = totalAmount === 0 && cart.length > 0;
 
-  // ── Checkout ────────────────────────────────────────────────────────────────
+  // ── Checkout — strictly separated DIRECT vs REDEEMED paths ─────────────────
+  const clearCart = () => {
+    setCart([]);
+    setIsCheckoutOpen(false);
+    setSelectedCampaign(null);
+    setPaymentMode('DIRECT');
+    setAppliedRedemptionCode(null);
+    setAppliedRedemptionDiscount(0);
+  };
+
+  const recordCampaign = async (orderId: string) => {
+    if (!selectedCampaign || campaignDiscount <= 0 || !profile) return;
+    await Promise.all([
+      supabase.from('campaign_redemptions').insert({
+        campaign_id: selectedCampaign.id,
+        customer_id: profile.id,
+        order_id: orderId,
+        discount_applied: campaignDiscount,
+      }),
+      supabase.from('campaigns')
+        .update({ total_redemptions: (selectedCampaign.total_redemptions ?? 0) + 1 })
+        .eq('id', selectedCampaign.id),
+    ]);
+  };
+  // ── Payment confirmation state ──────────────────────────────────────────────
+  const pendingOrderRef = useRef<{
+    orderId: string;
+    orderNumber: string;
+  } | null>(null);
+
+  const [paymentPending, setPaymentPending] = useState(false);
+  const [paymentCheckoutUrl, setPaymentCheckoutUrl] = useState<string | null>(null);
+  const [ordersPopupBlocked, setOrdersPopupBlocked] = useState(false);
+
+  const paymentHandledRef = useRef(false);
+  const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const fallbackIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Finalize successful payment ONCE ────────────────────────────────────────
+  const handlePaymentConfirmed = useCallback(() => {
+    if (paymentHandledRef.current) return;
+
+    paymentHandledRef.current = true;
+
+    setPaymentPending(false);
+    setPaymentCheckoutUrl(null);
+
+    if (fallbackIntervalRef.current) {
+      clearInterval(fallbackIntervalRef.current);
+      fallbackIntervalRef.current = null;
+    }
+
+    if (realtimeChannelRef.current) {
+      supabase.removeChannel(realtimeChannelRef.current);
+      realtimeChannelRef.current = null;
+    }
+
+    clearCart();
+
+    const opened = openOrdersWindowOnce();
+
+    if (!opened) {
+      setOrdersPopupBlocked(true);
+    }
+
+    toast.success(
+      'Payment confirmed! Your order is now being prepared. ☕',
+      {
+        description: opened
+          ? 'Your order is now open in a new tab.'
+          : 'Your order is confirmed. Please open My Orders from the menu.',
+      }
+    );
+  }, []);
+
+  // ── Verify current order status from backend ─────────────────────────────────
+  const checkPendingPayment = useCallback(async () => {
+    const pending = pendingOrderRef.current;
+
+    if (!pending || paymentHandledRef.current) {
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('orders')
+      .select('id, payment_status, order_status')
+      .eq('id', pending.orderId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('[PAYMENT] Status check failed:', error);
+      return;
+    }
+
+    if (!data) {
+      console.warn(
+        '[PAYMENT] Order not visible while waiting for confirmation:',
+        pending.orderId
+      );
+      return;
+    }
+
+    console.log('[PAYMENT] Current order state:', {
+      id: data.id,
+      payment_status: data.payment_status,
+      order_status: data.order_status,
+    });
+
+    if (data.payment_status === 'paid') {
+      handlePaymentConfirmed();
+    }
+  }, [handlePaymentConfirmed]);
+
+  // ── Realtime + fallback confirmation ────────────────────────────────────────
+  useEffect(() => {
+    const pending = pendingOrderRef.current;
+
+    if (!paymentPending || !pending || paymentHandledRef.current) {
+      return;
+    }
+
+    let disposed = false;
+
+    console.log('[PAYMENT] Starting confirmation listener:', {
+      orderId: pending.orderId,
+      orderNumber: pending.orderNumber,
+    });
+
+    // Always check immediately in case the webhook already finished
+    checkPendingPayment();
+
+    // ── PRIMARY: Supabase Realtime ────────────────────────────────────────────
+    const channel = supabase
+      .channel(`payment-confirmation-${pending.orderId}-${Date.now()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders',
+          filter: `id=eq.${pending.orderId}`,
+        },
+        (payload) => {
+          if (disposed || paymentHandledRef.current) {
+            return;
+          }
+
+          const newRow = payload.new as {
+            id?: string;
+            payment_status?: string;
+            order_status?: string;
+          };
+
+          console.log('[PAYMENT REALTIME] Order updated:', newRow);
+
+          if (
+            newRow.id === pending.orderId &&
+            newRow.payment_status === 'paid'
+          ) {
+            handlePaymentConfirmed();
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[PAYMENT REALTIME] Subscription status:', status);
+
+        if (status === 'SUBSCRIBED') {
+          console.log(
+            '[PAYMENT REALTIME] Listening for order:',
+            pending.orderId
+          );
+
+          // Race protection:
+          // webhook could have completed between the first DB check
+          // and the realtime subscription becoming active.
+          checkPendingPayment();
+        }
+
+        if (
+          status === 'CHANNEL_ERROR' ||
+          status === 'TIMED_OUT'
+        ) {
+          console.warn(
+            '[PAYMENT REALTIME] Realtime unavailable; fallback polling remains active.'
+          );
+        }
+      });
+
+    realtimeChannelRef.current = channel;
+
+    // ── FALLBACK: DB polling ──────────────────────────────────────────────────
+    // Realtime is primary. Polling exists only as resilience against:
+    // - realtime disconnect
+    // - websocket failure
+    // - browser/network instability
+    // - webhook/realtime timing races
+    fallbackIntervalRef.current = setInterval(() => {
+      if (!disposed && !paymentHandledRef.current) {
+        checkPendingPayment();
+      }
+    }, 5000);
+
+    // ── Reconcile immediately when customer returns from Chapa ───────────────
+    const handleVisibilityChange = () => {
+      if (
+        document.visibilityState === 'visible' &&
+        !disposed &&
+        !paymentHandledRef.current
+      ) {
+        console.log(
+          '[PAYMENT] Tab became visible; reconciling payment state.'
+        );
+
+        checkPendingPayment();
+      }
+    };
+
+    document.addEventListener(
+      'visibilitychange',
+      handleVisibilityChange
+    );
+
+    // ── Also reconcile when browser regains network ───────────────────────────
+    const handleOnline = () => {
+      if (
+        !disposed &&
+        !paymentHandledRef.current
+      ) {
+        console.log(
+          '[PAYMENT] Network restored; reconciling payment state.'
+        );
+
+        checkPendingPayment();
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+
+    return () => {
+      disposed = true;
+
+      document.removeEventListener(
+        'visibilitychange',
+        handleVisibilityChange
+      );
+
+      window.removeEventListener('online', handleOnline);
+
+      if (fallbackIntervalRef.current) {
+        clearInterval(fallbackIntervalRef.current);
+        fallbackIntervalRef.current = null;
+      }
+
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(
+          realtimeChannelRef.current
+        );
+        realtimeChannelRef.current = null;
+      }
+    };
+  }, [
+    paymentPending,
+    checkPendingPayment,
+    handlePaymentConfirmed,
+  ]);
+
+  const sendToChapa = async (orderId: string, orderNumber: string, amount: number) => {
+    const initResponse = await supabase.functions.invoke('chapa-initialize', {
+      body: {
+        amount: amount.toFixed(2),
+        currency: 'ETB',
+        email: profile!.email || 'customer@example.com',
+        first_name: profile!.full_name || 'Customer',
+        tx_ref: orderNumber,
+      },
+    });
+    if (initResponse.error) throw initResponse.error;
+    const { checkout_url } = initResponse.data;
+    if (!checkout_url) throw new Error('No checkout URL returned from payment gateway');
+
+    // Open Chapa in a NEW TAB — receipt stays visible; this tab polls for paid status
+    pendingOrderRef.current = { orderId, orderNumber };
+    setPaymentCheckoutUrl(checkout_url);
+    const win = window.open(checkout_url, '_blank', 'noopener,noreferrer');
+    if (!win) {
+      // Popup blocked — show manual link
+      toast.info('Please open the payment window below.', { duration: 10000 });
+    }
+    setPaymentPending(true);
+    setIsCheckoutOpen(false);
+  };
+
   const handleCheckout = async () => {
     if (!profile) {
       toast.error('Please sign in to place an order.');
-      navigate(`/login?returnTo=/menu`);
+      navigate('/login?returnTo=/menu');
       return;
     }
     if (!cafe) return;
@@ -250,71 +542,75 @@ export default function MenuPage() {
     try {
       const items = cart.map(c => ({ menu_item_id: c.item.id, quantity: c.qty }));
 
-      // Use the redemption-aware RPC — it handles zero-pay atomically on the server
-      const { data, error } = await supabase.rpc('process_checkout_with_redemption', {
-        p_cafe_id: cafe.id,
-        p_items: items,
-        p_redemption_code: appliedRedemptionCode ?? null,
-      });
-      if (error) throw error;
-
-      // Record campaign redemption if applied
-      if (selectedCampaign && campaignDiscount > 0) {
-        await Promise.all([
-          supabase.from('campaign_redemptions').insert({
-            campaign_id: selectedCampaign.id,
-            customer_id: profile.id,
-            order_id: data.order_id ?? null,
-            discount_applied: campaignDiscount,
-          }),
-          supabase
-            .from('campaigns')
-            .update({ total_redemptions: (selectedCampaign.total_redemptions ?? 0) + 1 })
-            .eq('id', selectedCampaign.id),
-        ]);
-      }
-
-      // Zero-pay: fully covered by loyalty — skip Chapa entirely
-      if (data.is_zero_pay) {
-        toast.success('Order placed! Your rewards covered the full amount. ☕');
-        setCart([]);
-        setIsCheckoutOpen(false);
-        setSelectedCampaign(null);
-        setAppliedRedemptionCode(null);
-        setAppliedRedemptionDiscount(0);
-        navigate('/account/orders');
+      // ── PATH A: DIRECT — no redemption code applied ─────────────────────
+      if (paymentMode === 'DIRECT') {
+        const { data, error } = await supabase.rpc('process_direct_checkout', {
+          p_cafe_id: cafe.id,
+          p_items: items,
+        });
+        if (error) throw error;
+        await recordCampaign(data.order_id);
+        // sendToChapa opens a new tab — sets paymentPending, closes modal
+        await sendToChapa(data.order_id, data.order_number, data.amount_to_pay);
         return;
       }
 
-      // Partial or no loyalty — send to Chapa with the net amount
-      const initResponse = await supabase.functions.invoke('chapa-initialize', {
-        body: {
-          amount: data.amount_to_pay.toFixed(2),
-          currency: 'ETB',
-          email: profile.email || 'customer@example.com',
-          first_name: profile.full_name || 'Customer',
-          tx_ref: data.order_number,
-          return_url: `${window.location.origin}/payment-success?tx_ref=${data.order_number}`,
-        },
-      });
+      // ── PATH B: REDEEMED — loyalty code explicitly applied ──────────────
+      if (paymentMode === 'REDEEMED' && appliedRedemptionCode) {
+        const { data, error } = await supabase.rpc('process_checkout_with_redemption', {
+          p_cafe_id: cafe.id,
+          p_items: items,
+          p_redemption_code: appliedRedemptionCode,
+        });
+        if (error) throw error;
+        await recordCampaign(data.order_id);
 
-      if (initResponse.error) throw initResponse.error;
-      const { checkout_url } = initResponse.data;
-      if (checkout_url) { window.location.href = checkout_url; return; }
+        if (data.is_zero_pay) {
+          toast.success('Order placed! Your rewards covered the full amount. ☕');
+          clearCart();
+          navigate('/account/orders');
+          return;
+        }
 
-      toast.success('Order placed!');
-      setCart([]);
-      setIsCheckoutOpen(false);
-      setSelectedCampaign(null);
-      setAppliedRedemptionCode(null);
-      setAppliedRedemptionDiscount(0);
-      navigate('/account/orders');
+        await sendToChapa(data.order_id, data.order_number, data.amount_to_pay);
+        return;
+      }
     } catch (err: any) {
-      toast.error('Failed to complete checkout.', { description: err.message });
+      toast.error('Checkout failed.', { description: err.message });
+      // Preserve cart + input. Reset only transient submitting flag so retry works immediately.
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // Payment-pending overlay (shows after Chapa tab is opened)
+  const PaymentPendingOverlay = paymentPending ? (
+    <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="glass max-w-sm w-full p-8 rounded-2xl border border-border text-center space-y-6">
+        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+          <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-heading font-semibold text-foreground">Complete Payment</h2>
+          <p className="text-sm text-muted-foreground">
+            A secure payment window opened in a new tab. Complete your payment there — this page updates automatically.
+          </p>
+        </div>
+        {paymentCheckoutUrl && (
+          <Button asChild variant="outline" className="w-full">
+            <a href={paymentCheckoutUrl} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Reopen Payment Window
+            </a>
+          </Button>
+        )}
+        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground animate-pulse">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Waiting for payment confirmation…
+        </div>
+      </div>
+    </div>
+  ) : null;
 
   // ── Vibe-scored recommendations (top 4 items by vibe score) ────────────────
   const vibeRecommendations = useMemo<MenuItem[]>(() => {
@@ -744,10 +1040,12 @@ export default function MenuPage() {
                     onApply={(code, discount) => {
                       setAppliedRedemptionCode(code);
                       setAppliedRedemptionDiscount(discount);
+                      setPaymentMode('REDEEMED');
                     }}
                     onClear={() => {
                       setAppliedRedemptionCode(null);
                       setAppliedRedemptionDiscount(0);
+                      setPaymentMode('DIRECT');
                     }}
                   />
                 </div>
@@ -816,6 +1114,7 @@ export default function MenuPage() {
         </div>
       )}
 
+      {PaymentPendingOverlay}
     </PublicLayout>
   );
 }

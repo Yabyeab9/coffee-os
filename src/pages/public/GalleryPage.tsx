@@ -21,16 +21,21 @@ export default function GalleryPage() {
 
   useEffect(() => {
     async function load() {
-      const c = await getCafeBySlug(CAFE_SLUG);
-      if (!c) { setIsLoading(false); return; }
-      setCafe(c);
-      const [galleryData, annoData] = await Promise.all([
-        getGallery(c.id),
-        getAnnouncements(c.id),
-      ]);
-      setItems(galleryData);
-      setAnnouncements(annoData);
-      setIsLoading(false);
+      try {
+        const c = await getCafeBySlug(CAFE_SLUG);
+        if (!c) return;
+        setCafe(c);
+        const [galleryData, annoData] = await Promise.all([
+          getGallery(c.id),
+          getAnnouncements(c.id),
+        ]);
+        setItems(galleryData);
+        setAnnouncements(annoData);
+      } catch {
+        // non-fatal — page renders empty state
+      } finally {
+        setIsLoading(false);
+      }
     }
     load();
   }, []);

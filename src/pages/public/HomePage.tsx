@@ -890,6 +890,120 @@ export default function HomePage() {
         </section>
       )}
 
+      {/* ── Mood Pulse — two-tier intelligence section ──────────────────────── */}
+      <section className="section-pad max-w-7xl mx-auto px-4 md:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center"
+        >
+          {/* Left: explanation — same for both tiers */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+              </span>
+              <span className="text-xs font-semibold text-primary uppercase tracking-widest">Live Now</span>
+            </div>
+            <h2 className="text-3xl md:text-4xl font-heading font-semibold text-foreground leading-tight text-balance">
+              Feel the café.<br />Anonymously.
+            </h2>
+            <p className="text-muted-foreground leading-relaxed">
+              Mood Pulse is a real-time energy layer — see what vibes are alive in the café right now,
+              broadcast your mood anonymously, and resonate with others on the same wavelength.
+              No names. No profiles. Just presence.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { label: 'Quiet Focus', color: 'text-slate-400 border-slate-500/30 bg-slate-500/5' },
+                { label: 'Social Energy', color: 'text-amber-400 border-amber-500/30 bg-amber-500/5' },
+                { label: 'Creative Buzz', color: 'text-violet-400 border-violet-500/30 bg-violet-500/5' },
+                { label: 'Comforted', color: 'text-rose-400 border-rose-500/30 bg-rose-500/5' },
+                { label: 'Energized', color: 'text-orange-400 border-orange-500/30 bg-orange-500/5' },
+              ].map(v => (
+                <span key={v.label} className={`text-xs px-2.5 py-1 rounded-full border font-medium ${v.color}`}>
+                  {v.label}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Right: auth-gated card */}
+          {session?.user ? (
+            /* ── Logged-in tier: direct entry with teaser pulse ─────────── */
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4 }}
+              className="glass rounded-2xl border border-border/60 p-6 space-y-4"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-foreground">You're in the café right now?</p>
+                <Badge variant="secondary" className="text-[10px]">Mood Pulse</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Set your vibe and join the anonymous energy stream.
+                Your signal expires in 2 hours automatically.
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { label: 'Quiet Focus', color: 'text-slate-400' },
+                  { label: 'Creative Buzz', color: 'text-violet-400' },
+                  { label: 'Social Energy', color: 'text-amber-400' },
+                ] as const).map(v => (
+                  <div
+                    key={v.label}
+                    className="flex flex-col items-center gap-1 py-3 rounded-lg border border-border/40 bg-secondary/30 text-center"
+                  >
+                    <span className={`text-[10px] font-medium leading-tight ${v.color}`}>{v.label}</span>
+                  </div>
+                ))}
+              </div>
+              <Link to="/account/mood-pulse" className="block">
+                <Button className="w-full gap-2">
+                  Open Mood Pulse <ArrowRight className="w-4 h-4" />
+                </Button>
+              </Link>
+            </motion.div>
+          ) : (
+            /* ── Logged-out tier: teaser with sign-in prompt ─────────────── */
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4 }}
+              className="glass rounded-2xl border border-border/60 p-6 space-y-4"
+            >
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-foreground">Join the pulse</p>
+                <p className="text-xs text-muted-foreground">Sign in to broadcast your mood and feel the café come alive.</p>
+              </div>
+              {/* Blurred preview rows — hint at what's inside */}
+              <div className="space-y-2 select-none pointer-events-none" aria-hidden>
+                {[
+                  { bar: '72%', label: 'Social Energy', color: 'bg-amber-400' },
+                  { bar: '48%', label: 'Creative Buzz', color: 'bg-violet-400' },
+                  { bar: '28%', label: 'Quiet Focus',   color: 'bg-slate-400' },
+                ].map(row => (
+                  <div key={row.label} className="flex items-center gap-3 blur-[1.5px]">
+                    <span className="w-24 text-xs text-muted-foreground shrink-0">{row.label}</span>
+                    <div className="flex-1 h-1.5 bg-border/40 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${row.color}`} style={{ width: row.bar }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Link to="/login?returnTo=/account/mood-pulse" className="block">
+                <Button variant="outline" className="w-full gap-2 border-border">
+                  Sign in to join <ArrowRight className="w-4 h-4" />
+                </Button>
+              </Link>
+            </motion.div>
+          )}
+        </motion.div>
+      </section>
+
       {/* ── CTA ─────────────────────────────────────────────────────────────── */}
       <section className="section-pad max-w-7xl mx-auto px-4 md:px-8">
         <motion.div

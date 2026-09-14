@@ -31,13 +31,19 @@ export default function UsersAdminPage() {
 
   const load = useCallback(async () => {
     setIsLoading(true);
-    let query = supabase.from('users').select('*').order('created_at', { ascending: false });
-    if (!isAdmin && profile?.cafe_id) {
-      query = query.eq('cafe_id', profile.cafe_id);
+    try {
+      let query = supabase.from('users').select('*').order('created_at', { ascending: false });
+      if (!isAdmin && profile?.cafe_id) {
+        query = query.eq('cafe_id', profile.cafe_id);
+      }
+      const { data, error } = await query.limit(50);
+      if (error) throw error;
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (_err) {
+      toast.error('Failed to load users');
+    } finally {
+      setIsLoading(false);
     }
-    const { data } = await query.limit(50);
-    setUsers(Array.isArray(data) ? data : []);
-    setIsLoading(false);
   }, [isAdmin, profile]);
 
   useEffect(() => { load(); }, [load]);
