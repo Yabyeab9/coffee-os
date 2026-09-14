@@ -25,13 +25,18 @@ export default function OrdersPage() {
 
   const fetchOrders = useCallback(async () => {
     if (!profile?.id) return;
-    const { data } = await supabase
-      .from('orders')
-      .select('*, order_items(*, menus(name)), cafes(name)')
-      .eq('user_id', profile.id)
-      .order('created_at', { ascending: false });
-    setOrders(data || []);
-    setIsLoading(false);
+    try {
+      const { data } = await supabase
+        .from('orders')
+        .select('*, order_items(*, menus(name)), cafes(name)')
+        .eq('user_id', profile.id)
+        .order('created_at', { ascending: false });
+      setOrders(data || []);
+    } catch {
+      toast.error('Could not load your orders. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   }, [profile?.id]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
@@ -54,11 +59,15 @@ export default function OrdersPage() {
     return () => { supabase.removeChannel(channel); };
   }, [profile?.id]);
 
+  // Also need to add toast import — comment removed, toast already imported line 9
   const cancelOrder = async (orderId: string) => {
-    const { error } = await supabase.from('orders').update({ order_status: 'cancelled' }).eq('id', orderId);
-    if (!error) {
+    try {
+      const { error } = await supabase.from('orders').update({ order_status: 'cancelled' }).eq('id', orderId);
+      if (error) throw error;
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, order_status: 'cancelled' } : o));
       toast.success('Order cancelled successfully');
+    } catch {
+      toast.error('Could not cancel the order. Please try again.');
     }
   };
 
@@ -69,7 +78,7 @@ export default function OrdersPage() {
       orderStatus: order.order_status,
       paymentStatus: order.payment_status,
       items: (order.order_items ?? []).map((i: any) => ({
-        name: i.menu_items?.name || 'Item',
+        name: i.menus?.name || 'Item',
         quantity: i.quantity,
       })),
     });
@@ -214,7 +223,7 @@ export default function OrdersPage() {
                     </div>
                     <div className="flex-1 mt-2 mb-4">
                       <p className="text-sm text-muted-foreground line-clamp-2">
-                        {order.order_items?.map((i: any) => `${i.quantity}× ${i.menu_items?.name}`).join(', ')}
+                        {order.order_items?.map((i: any) => `${i.quantity}× ${i.menus?.name}`).join(', ')}
                       </p>
                       {idx === 0 && (
                         <div className="inline-flex mt-2 items-center gap-1.5 px-2 py-1 rounded bg-primary/10 text-primary text-[10px] font-semibold uppercase tracking-wider">

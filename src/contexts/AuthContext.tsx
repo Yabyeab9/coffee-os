@@ -60,12 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // Safety timeout: unblock the UI if auth init stalls (e.g. network dead)
-    const safetyTimer = setTimeout(() => {
-      if (mounted && !initDone.current) {
-        setAuthState(prev => ({ ...prev, isLoading: false }));
-      }
-    }, 6000);
+
 
     const initializeAuth = async () => {
       try {
@@ -88,10 +83,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         console.error('Auth initialization error:', err);
         if (mounted) {
-          setAuthState(prev => ({ ...prev, isLoading: false }));
+          setAuthState(prev => ({ ...prev, isLoading: false, error: err instanceof Error ? err.message : 'Auth initialization failed' }));
         }
       } finally {
-        clearTimeout(safetyTimer);
         initDone.current = true;
       }
     };
@@ -124,7 +118,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       mounted = false;
-      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
   }, [fetchProfileData]);
@@ -136,14 +129,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: null, profile };
   };
 
-  const signInWithGoogle = async (redirectTo?: string) => {
-    const { data, error } = await supabase.auth.signInWithSSO({
-      domain: 'miaoda-gg.com',
-      options: { redirectTo: redirectTo ?? `${window.location.origin}/account` },
-    });
-    if (data?.url) window.open(data.url, '_self');
-    return { error: error?.message ?? null };
-  };
+ const signInWithGoogle = async (redirectTo?: string) => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: redirectTo ?? `${window.location.origin}/account`,
+    },
+  })
+
+  if (error) {
+    console.error('Google sign-in error:', error)
+    return { error: error.message }
+  }
+
+  return { error: null }
+}
+
 
   const signUp = async (email: string, password: string, fullName: string) => {
     const { data, error } = await supabase.auth.signUp({
@@ -178,13 +179,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.error('Logout error:', e);
     } finally {
-      // Atomic clear before redirect
       setAuthState({ session: null, profile: null, isLoading: false });
       localStorage.clear();
       sessionStorage.clear();
-      setTimeout(() => {
-        window.location.href = '/login?logged_out=true';
-      }, 50);
     }
   };
 

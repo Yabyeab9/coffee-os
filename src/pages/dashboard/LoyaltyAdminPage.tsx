@@ -24,6 +24,8 @@ interface LoyaltySettings {
   currency_per_reward_unit: number;
   reward_unit_cost_points: number;
   minimum_redemption_points: number;
+  max_redemption_per_order: number;
+  redemption_expiry_days: number;
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -122,6 +124,8 @@ export default function LoyaltyAdminPage() {
         reward_unit_cost_points: loyaltySettings.reward_unit_cost_points,
         minimum_redemption_points: loyaltySettings.minimum_redemption_points,
         currency_per_reward_unit: loyaltySettings.currency_per_reward_unit,
+        max_redemption_per_order: loyaltySettings.max_redemption_per_order ?? 500,
+        redemption_expiry_days: loyaltySettings.redemption_expiry_days ?? 365,
       });
     }
   }, [loyaltySettings, settingsDirty]);
@@ -410,12 +414,14 @@ export default function LoyaltyAdminPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {[
-                  { key: 'points_per_order' as const,        label: 'Points per Order',             hint: 'Awarded when an order is completed' },
-                  { key: 'points_per_reservation' as const,  label: 'Points per Reservation',       hint: 'Awarded when a reservation is honoured' },
-                  { key: 'points_per_referral' as const,     label: 'Points per Referral',          hint: 'Awarded when a referred user signs up' },
-                  { key: 'reward_unit_cost_points' as const, label: 'Points per Reward Unit',       hint: 'Points needed to unlock 1 reward unit (1 ETB)' },
-                  { key: 'minimum_redemption_points' as const, label: 'Minimum Redemption',         hint: 'Minimum points balance needed to redeem' },
-                  { key: 'currency_per_reward_unit' as const, label: 'ETB Value per Reward Unit',   hint: 'ETB value of each redeemed reward unit' },
+                  { key: 'points_per_order' as const,            label: 'Points per Order',             hint: 'Awarded when an order is completed' },
+                  { key: 'points_per_reservation' as const,      label: 'Points per Reservation',       hint: 'Awarded when a reservation is honoured' },
+                  { key: 'points_per_referral' as const,         label: 'Points per Referral',          hint: 'Awarded when a referred user signs up' },
+                  { key: 'reward_unit_cost_points' as const,     label: 'Points per Reward Unit',       hint: 'Points needed to unlock 1 reward unit (1 ETB)' },
+                  { key: 'minimum_redemption_points' as const,   label: 'Minimum to Redeem',            hint: 'Minimum points balance required to redeem anything' },
+                  { key: 'currency_per_reward_unit' as const,    label: 'ETB Value per Reward Unit',    hint: 'ETB value of each redeemed reward unit' },
+                  { key: 'max_redemption_per_order' as const,    label: 'Max Redemption per Order (ETB)', hint: 'Cap how much loyalty credit can offset a single order' },
+                  { key: 'redemption_expiry_days' as const,      label: 'Redemption Code Expiry (days)', hint: 'How many days before an unused redemption code expires' },
                 ].map(field => (
                   <div key={field.key} className="space-y-1.5">
                     <Label className="text-xs font-semibold text-foreground">{field.label}</Label>

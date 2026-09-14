@@ -44,10 +44,11 @@ export default function ReservationPage() {
   const [phone, setPhone] = useState('');
   const [notes, setNotes] = useState('');
 
-  // Pre-order state
-  const [wantsPreorder, setWantsPreorder] = useState<boolean | null>(null);
+  // Pre-order state — order is always required; wantsPreorder drives the menu UI
+  const [wantsPreorder] = useState<boolean>(true);
 
-  // Loyalty redemption for this reservation
+  // Payment path: DIRECT (no redemption) | REDEEMED (loyalty code explicitly applied)
+  const [reservationPaymentMode, setReservationPaymentMode] = useState<'DIRECT' | 'REDEEMED'>('DIRECT');
   const [appliedRedemptionCode, setAppliedRedemptionCode] = useState<string | null>(null);
   const [appliedRedemptionDiscount, setAppliedRedemptionDiscount] = useState(0);
 
@@ -172,21 +173,21 @@ const [trafficPatterns, setTrafficPatterns] = useState<any[]>([]);
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      // Apply loyalty redemption to the created reservation if user selected one
-      if (appliedRedemptionCode && data.reservation?.id) {
+      // PATH B: REDEEMED — loyalty code explicitly applied by customer
+      if (reservationPaymentMode === 'REDEEMED' && appliedRedemptionCode && data.reservation?.id) {
         const { error: redemptionError } = await supabase.rpc('apply_reservation_redemption', {
-          p_reservation_id: data.reservation.id,
+          p_reservation_id: data.reservation_id,
           p_redemption_code: appliedRedemptionCode,
         });
         if (redemptionError) {
-          // Don't fail the whole reservation — just warn
           toast.warning('Reservation confirmed, but reward could not be applied.', {
             description: redemptionError.message,
           });
         }
       }
+      // PATH A: DIRECT — no redemption RPC called at all
 
-      navigate(`/reservation/verify/${data.reservation.id}`);
+      navigate(`/reservation/verify/${data.reservation_id}`);
     } catch (error: any) {
       toast.error('Reservation failed', { description: error.message || String(error) });
     } finally {
@@ -267,19 +268,15 @@ const [trafficPatterns, setTrafficPatterns] = useState<any[]>([]);
             </motion.div>
           )}
 
-          {/* Step 2 — Pre-order selection */}
+          {/* Step 2 — Pre-order (required) */}
           {step === 2 && (
             <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-              <div className="text-center space-y-4 py-8">
-                <h2 className="text-2xl font-heading font-semibold text-foreground">Would you like to pre-order?</h2>
-                <p className="text-muted-foreground">Skip the wait and have your drinks ready shortly after you arrive.</p>
-                <div className="flex justify-center gap-4 mt-6">
-                  <Button variant="outline" onClick={() => { setWantsPreorder(false); setStep(3); }} className="w-32 border-border">No, thanks</Button>
-                  <Button onClick={() => setWantsPreorder(true)} className="w-32 bg-primary text-primary-foreground hover:bg-primary/90">Yes, please</Button>
-                </div>
+              <div className="space-y-1">
+                <h2 className="text-2xl font-heading font-semibold text-foreground">Select your order</h2>
+                <p className="text-sm text-muted-foreground">Add at least one item to continue with your reservation.</p>
               </div>
 
-              {wantsPreorder === true && (
+              {wantsPreorder && (
                 <div className="mt-8 space-y-6 animate-in fade-in slide-in-from-bottom-4">
                   <div className="flex gap-2 overflow-x-auto pb-2">
                     {categories.map(cat => (
@@ -334,8 +331,12 @@ const [trafficPatterns, setTrafficPatterns] = useState<any[]>([]);
 
                   <div className="flex gap-3 pt-4 border-t border-border/50">
                     <Button variant="outline" onClick={() => setStep(1)} className="border-border"><ChevronLeft className="w-4 h-4 mr-1" /> Back</Button>
-                    <Button onClick={() => setStep(3)} className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90">
-                      Continue <ChevronRight className="w-4 h-4 ml-2" />
+                    <Button
+                      onClick={() => setStep(3)}
+                      disabled={cart.length === 0}
+                      className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                      {cart.length === 0 ? 'Add items to continue' : <>Continue <ChevronRight className="w-4 h-4 ml-2" /></>}
                     </Button>
                   </div>
                 </div>
@@ -434,10 +435,12 @@ const [trafficPatterns, setTrafficPatterns] = useState<any[]>([]);
                         onApply={(code, discount) => {
                           setAppliedRedemptionCode(code);
                           setAppliedRedemptionDiscount(discount);
+                          setReservationPaymentMode('REDEEMED');
                         }}
                         onClear={() => {
                           setAppliedRedemptionCode(null);
                           setAppliedRedemptionDiscount(0);
+                          setReservationPaymentMode('DIRECT');
                         }}
                       />
                     </div>
@@ -479,10 +482,12 @@ const [trafficPatterns, setTrafficPatterns] = useState<any[]>([]);
                     onApply={(code, discount) => {
                       setAppliedRedemptionCode(code);
                       setAppliedRedemptionDiscount(discount);
+                      setReservationPaymentMode('REDEEMED');
                     }}
                     onClear={() => {
                       setAppliedRedemptionCode(null);
                       setAppliedRedemptionDiscount(0);
+                      setReservationPaymentMode('DIRECT');
                     }}
                   />
                 </div>

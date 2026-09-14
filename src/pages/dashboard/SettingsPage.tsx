@@ -40,37 +40,41 @@ export default function SettingsPage() {
 
   const load = useCallback(async () => {
     setIsLoading(true);
-    const [cafes, cafeData] = await Promise.all([
-      getAllCafes(),
-      getCafeBySlug(CAFE_SLUG),
-    ]);
-    const c = cafeData ?? cafes[0];
-    if (c) {
-      setCafe(c);
-      setForm({
-        name: c.name ?? '',
-        tagline: c.tagline ?? '',
-        description: c.description ?? '',
-        phone: c.phone ?? '',
-        email: c.email ?? '',
-        address: c.address ?? '',
-        city: c.city ?? '',
-        logo_url: c.logo_url ?? '',
-        cover_url: c.cover_url ?? '',
-        instagram_url: c.instagram_url ?? '',
-        facebook_url: c.facebook_url ?? '',
-        twitter_url: c.twitter_url ?? '',
-        tiktok_url: c.tiktok_url ?? '',
-      });
-      const hoursData = await getOpeningHours(c.id);
-      // Ensure all 7 days exist
-      const filled = Array.from({ length: 7 }, (_, i) => {
-        const existing = hoursData.find(h => h.day_of_week === i);
-        return existing ?? { id: '', cafe_id: c.id, day_of_week: i, open_time: '07:00', close_time: '22:00', is_closed: false };
-      });
-      setHours(filled as OpeningHours[]);
+    try {
+      const [cafes, cafeData] = await Promise.all([
+        getAllCafes(),
+        getCafeBySlug(CAFE_SLUG),
+      ]);
+      const c = cafeData ?? cafes[0];
+      if (c) {
+        setCafe(c);
+        setForm({
+          name: c.name ?? '',
+          tagline: c.tagline ?? '',
+          description: c.description ?? '',
+          phone: c.phone ?? '',
+          email: c.email ?? '',
+          address: c.address ?? '',
+          city: c.city ?? '',
+          logo_url: c.logo_url ?? '',
+          cover_url: c.cover_url ?? '',
+          instagram_url: c.instagram_url ?? '',
+          facebook_url: c.facebook_url ?? '',
+          twitter_url: c.twitter_url ?? '',
+          tiktok_url: c.tiktok_url ?? '',
+        });
+        const hoursData = await getOpeningHours(c.id);
+        const filled = Array.from({ length: 7 }, (_, i) => {
+          const existing = hoursData.find(h => h.day_of_week === i);
+          return existing ?? { id: '', cafe_id: c.id, day_of_week: i, open_time: '07:00', close_time: '22:00', is_closed: false };
+        });
+        setHours(filled as OpeningHours[]);
+      }
+    } catch (_err) {
+      toast.error('Failed to load settings');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, [cafeId]);
 
   useEffect(() => { load(); }, [load]);

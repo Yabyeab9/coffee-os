@@ -38,16 +38,18 @@ export default function ContactPage() {
     e.preventDefault();
     if (!form.name || !form.email || !form.message) { toast.error('Please fill in all required fields'); return; }
     setSending(true);
-    const { error } = await supabase.from('ai_chat_messages').insert({
-      session_id: null,
-      role: 'user',
-      content: JSON.stringify({ type: 'contact', ...form }),
-    });
-    setSending(false);
-    if (error) {
-      // Non-blocking
+    try {
+      await supabase.from('ai_chat_messages').insert({
+        session_id: null,
+        role: 'user',
+        content: JSON.stringify({ type: 'contact', ...form }),
+      });
+      setSent(true);
+    } catch (_err) {
+      toast.error('Failed to send message. Please try again.');
+    } finally {
+      setSending(false);
     }
-    setSent(true);
   };
 
   if (isLoading) {

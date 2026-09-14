@@ -14,7 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
-const DEMO_CAFE_ID = '00000000-0000-0000-0000-000000000001';
+
 
 type PostForm = { title: string; slug: string; excerpt: string; content: string; cover_url: string; tags: string; status: ContentStatus };
 const DEFAULT: PostForm = { title: '', slug: '', excerpt: '', content: '', cover_url: '', tags: '', status: 'draft' };
@@ -23,7 +23,7 @@ function slugify(s: string) { return s.toLowerCase().replace(/[^a-z0-9]+/g, '-')
 
 export default function BlogAdminPage() {
   const { cafeId, profile } = useAuth();
-  const resolvedId = cafeId ?? DEMO_CAFE_ID;
+  const resolvedId = cafeId!;
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(true);
@@ -34,9 +34,14 @@ export default function BlogAdminPage() {
 
   const load = useCallback(async () => {
     setIsLoading(true);
-    const res = await getBlogPosts(resolvedId);
-    setPosts(res.data);
-    setIsLoading(false);
+    try {
+      const res = await getBlogPosts(resolvedId);
+      setPosts(res.data);
+    } catch (_err) {
+      toast.error('Failed to load posts');
+    } finally {
+      setIsLoading(false);
+    }
   }, [resolvedId]);
 
   useEffect(() => { load(); }, [load]);
@@ -53,28 +58,33 @@ export default function BlogAdminPage() {
   const handleSave = async () => {
     if (!form.title.trim()) { toast.error('Title is required'); return; }
     setSaving(true);
-    const slug = form.slug || slugify(form.title);
-    const payload = {
-      cafe_id: resolvedId,
-      author_id: profile?.id ?? null,
-      title: form.title,
-      slug,
-      excerpt: form.excerpt || null,
-      content: form.content || null,
-      cover_url: form.cover_url || null,
-      tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
-      status: form.status,
-      seo_data: {},
-      published_at: form.status === 'published' ? new Date().toISOString() : null,
-    };
-    const { error } = editing
-      ? await updateBlogPost(editing.id, payload)
-      : await createBlogPost(payload);
-    setSaving(false);
-    if (error) { toast.error('Failed to save', { description: error }); return; }
-    toast.success(editing ? 'Post updated' : 'Post created');
-    setDialog(false);
-    load();
+    try {
+      const slug = form.slug || slugify(form.title);
+      const payload = {
+        cafe_id: resolvedId,
+        author_id: profile?.id ?? null,
+        title: form.title,
+        slug,
+        excerpt: form.excerpt || null,
+        content: form.content || null,
+        cover_url: form.cover_url || null,
+        tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
+        status: form.status,
+        seo_data: {},
+        published_at: form.status === 'published' ? new Date().toISOString() : null,
+      };
+      const { error } = editing
+        ? await updateBlogPost(editing.id, payload)
+        : await createBlogPost(payload);
+      if (error) throw new Error(error);
+      toast.success(editing ? 'Post updated' : 'Post created');
+      setDialog(false);
+      load();
+    } catch (err: any) {
+      toast.error('Failed to save', { description: err.message });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async (id: string) => {

@@ -72,14 +72,19 @@ export default function NotificationsPage() {
   const load = useCallback(async () => {
     if (!profile?.id) return;
     setIsLoading(true);
-    const { data } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', profile.id)
-      .order('created_at', { ascending: false })
-      .limit(60);
-    setNotifications(data ?? []);
-    setIsLoading(false);
+    try {
+      const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', profile.id)
+        .order('created_at', { ascending: false })
+        .limit(60);
+      setNotifications(data ?? []);
+    } catch (_err) {
+      // non-critical — list stays empty; user can pull-to-refresh
+    } finally {
+      setIsLoading(false);
+    }
   }, [profile?.id]);
 
   useEffect(() => { load(); }, [load]);
@@ -113,13 +118,22 @@ export default function NotificationsPage() {
 
   const markAllRead = async () => {
     setMarkingAll(true);
-    const unread = notifications.filter(n => !n.read).map(n => n.id);
-    if (unread.length > 0) {
-      await supabase.from('notifications').update({ read: true, read_at: new Date().toISOString() }).in('id', unread);
-      setNotifications(prev => prev.map(n => ({ ...n, read: true, read_at: new Date().toISOString() })));
-      toast.success('All notifications marked as read');
+    try {
+      const unread = notifications.filter(n => !n.read).map(n => n.id);
+      if (unread.length > 0) {
+        const { error } = await supabase
+          .from('notifications')
+          .update({ read: true, read_at: new Date().toISOString() })
+          .in('id', unread);
+        if (error) throw error;
+        setNotifications(prev => prev.map(n => ({ ...n, read: true, read_at: new Date().toISOString() })));
+        toast.success('All notifications marked as read');
+      }
+    } catch (_err) {
+      toast.error('Failed to mark notifications as read');
+    } finally {
+      setMarkingAll(false);
     }
-    setMarkingAll(false);
   };
 
   const displayed = tab === 'unread' ? notifications.filter(n => !n.read) : notifications;

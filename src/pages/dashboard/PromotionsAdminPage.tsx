@@ -642,13 +642,18 @@ export default function PromotionsAdminPage() {
   const fetchData = useCallback(async () => {
     if (!cafeId) return;
     setIsLoading(true);
-    const [campRes, menuRes] = await Promise.all([
-      supabase.from('campaigns').select('*').eq('cafe_id', cafeId).order('created_at', { ascending: false }),
-      supabase.from('menus').select('id, name, price, category_id, is_available, cafe_id, description, currency, image_url, status, is_featured, preparation_time, tags, allergens, ingredients, images, inventory_tracking, stock_quantity, low_stock_threshold, seasonal, visibility, sku, deleted_at, created_at, updated_at').eq('cafe_id', cafeId).is('deleted_at', null).eq('status', 'active').limit(100),
-    ]);
-    setCampaigns(campRes.data ?? []);
-    setMenuItems((menuRes.data ?? []) as MenuItem[]);
-    setIsLoading(false);
+    try {
+      const [campRes, menuRes] = await Promise.all([
+        supabase.from('campaigns').select('*').eq('cafe_id', cafeId).order('created_at', { ascending: false }),
+        supabase.from('menus').select('id, name, price, category_id, is_available, cafe_id, description, currency, image_url, status, is_featured, preparation_time, tags, allergens, ingredients, images, inventory_tracking, stock_quantity, low_stock_threshold, seasonal, visibility, sku, deleted_at, created_at, updated_at').eq('cafe_id', cafeId).is('deleted_at', null).eq('status', 'active').limit(100),
+      ]);
+      setCampaigns(campRes.data ?? []);
+      setMenuItems((menuRes.data ?? []) as MenuItem[]);
+    } catch {
+      toast.error('Failed to load promotions. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   }, [cafeId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);

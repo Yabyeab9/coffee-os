@@ -15,19 +15,19 @@ export default function ProfilePage() {
     e.preventDefault();
     if (!profile?.id) return;
     setIsSaving(true);
-    
-    const { error } = await supabase
-      .from('users')
-      .update({ full_name: fullName })
-      .eq('id', profile.id);
-      
-    if (error) {
-      toast.error('Failed to update profile');
-    } else {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ full_name: fullName })
+        .eq('id', profile.id);
+      if (error) throw error;
       toast.success('Profile updated successfully');
       await refreshProfile();
+    } catch (err: any) {
+      toast.error('Failed to update profile', { description: err.message });
+    } finally {
+      setIsSaving(false);
     }
-    setIsSaving(false);
   };
 
   return (

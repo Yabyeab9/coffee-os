@@ -59,7 +59,7 @@ export default function ReservationsPage() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const upcomingStatuses = ['pending', 'pending_payment', 'pending_verification', 'confirmed', 'paid'];
+  const upcomingStatuses = ['pending', 'pending_payment', 'pending_verification', 'confirmed', 'paid', 'verified'];
   const upcomingReservations = reservations.filter(r => {
     const resDate = new Date(r.reservation_date);
     return resDate >= today && upcomingStatuses.includes(r.status);

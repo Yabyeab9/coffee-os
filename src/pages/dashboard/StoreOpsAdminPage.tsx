@@ -88,7 +88,10 @@ export default function StoreOpsAdminPage() {
       }
       setIsLoading(false);
     }
-    loadData().catch(() => setIsLoading(false));
+    loadData().catch(() => {
+      toast.error('Failed to load store operations data. Please try again.');
+      setIsLoading(false);
+    });
   }, [cafeId]);
 
   const handleSave = async () => {

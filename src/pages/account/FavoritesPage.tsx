@@ -11,9 +11,14 @@ export default function FavoritesPage() {
   useEffect(() => {
     async function load() {
       if (!profile?.id) return;
-      // We assume there might be a favorites table. If not it just returns empty.
-      setFavorites([]);
-      setIsLoading(false);
+      try {
+        // favorites table may not exist yet — gracefully return empty
+        setFavorites([]);
+      } catch {
+        // non-fatal
+      } finally {
+        setIsLoading(false);
+      }
     }
     load();
   }, [profile?.id]);
