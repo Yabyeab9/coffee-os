@@ -25,7 +25,7 @@ const NAV_GROUPS = [
     label: 'Coffee World',
     items: [
       { name: 'AI Barista',      path: '/account/ai-recommendations',  icon: Sparkles },
-      { name: 'Mood Pulse',      path: '/account/mood-pulse',          icon: Radio },
+      { name: 'Café Pulse',      path: '/account/mood-pulse',          icon: Radio },
       { name: 'Coffee Journey',  path: '/account/coffee-journey',      icon: Flame },
       { name: 'Coffee Passport', path: '/account/coffee-passport',     icon: GitBranch },
       { name: 'Bean Explorer',   path: '/account/bean-explorer',       icon: Leaf },
