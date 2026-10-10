@@ -17,7 +17,14 @@ if (sentryDsn) {
 }
 
 createRoot(document.getElementById("root")!).render(
-  <Sentry.ErrorBoundary fallback={<p>Something went wrong.</p>}>
+  <Sentry.ErrorBoundary fallback={({ resetError }) => (
+    <div role="alert" className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-6 text-foreground">
+      <p>Something went wrong.</p>
+      <button type="button" onClick={resetError} className="rounded-md border border-border px-4 py-2 text-sm hover:bg-secondary">
+        Try again
+      </button>
+    </div>
+  )}>
     <AppWrapper>
       <App />
     </AppWrapper>

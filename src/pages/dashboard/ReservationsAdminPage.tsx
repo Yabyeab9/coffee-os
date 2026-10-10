@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useReservationsList } from '@/hooks/queries';
 import { supabase } from '@/lib/supabase';
 import { updateReservationStatus } from '@/lib/api';
 import { 
-  Calendar, Search, Loader2, CheckCircle, XCircle, Clock, FileText, ChevronRight
+  Calendar, Search, Loader2, FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,8 +28,9 @@ export default function ReservationsAdminPage() {
   const { cafeId } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const [updatingReservationId, setUpdatingReservationId] = useState<string | null>(null);
 
-  const { data: resData, isLoading } = useReservationsList(cafeId || undefined);
+  const { data: resData, isLoading, isError, error, refetch } = useReservationsList(cafeId || undefined);
 
   useEffect(() => {
     if (!cafeId) return;
@@ -43,12 +44,16 @@ export default function ReservationsAdminPage() {
   }, [cafeId, queryClient]);
 
   const handleUpdateStatus = async (id: string, status: string) => {
+    setUpdatingReservationId(id);
     try {
-      await updateReservationStatus(id, status as any);
+      const result = await updateReservationStatus(id, status as any);
+      if (result.error) throw new Error(result.error);
       queryClient.invalidateQueries({ queryKey: ['reservations', cafeId] });
       toast.success(`Reservation marked as ${status.replace('_', ' ')}`);
     } catch (err: any) {
       toast.error(err.message || 'Failed to update reservation');
+    } finally {
+      setUpdatingReservationId(null);
     }
   };
 
@@ -86,11 +91,19 @@ export default function ReservationsAdminPage() {
         </div>
 
         <div className="overflow-x-auto">
+          {isError && (
+            <div role="alert" className="mb-4 flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+              <span>{error instanceof Error ? error.message : 'Failed to load reservations.'}</span>
+              <Button variant="outline" size="sm" onClick={() => void refetch()} className="ml-auto shrink-0">
+                Retry
+              </Button>
+            </div>
+          )}
           {isLoading ? (
             <div className="space-y-4">
               {Array.from({length: 5}).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
             </div>
-          ) : filtered.length === 0 ? (
+          ) : isError && !resData ? null : filtered.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground border-2 border-dashed border-border/50 rounded-lg">
               <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p>No reservations found.</p>
@@ -138,13 +151,19 @@ export default function ReservationsAdminPage() {
                           <div className="text-xs text-muted-foreground border border-border px-2 py-1 rounded">Awaiting Verification</div>
                         )}
                         {(r.status === 'pending' || r.status === 'confirmed' || r.status === 'verified' || r.status === 'pending_payment' || r.status === 'paid') && (
-                          <Button size="sm" onClick={() => handleUpdateStatus(r.id, 'checked_in')} className="bg-primary text-primary-foreground hover:bg-primary/90">Check In</Button>
+                          <Button size="sm" disabled={updatingReservationId === r.id} onClick={() => handleUpdateStatus(r.id, 'checked_in')} className="bg-primary text-primary-foreground hover:bg-primary/90">
+                            {updatingReservationId === r.id && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                            Check In
+                          </Button>
                         )}
                         {r.status === 'checked_in' && (
-                          <Button size="sm" onClick={() => handleUpdateStatus(r.id, 'completed')} className="bg-info text-info-foreground hover:bg-info/90">Complete</Button>
+                          <Button size="sm" disabled={updatingReservationId === r.id} onClick={() => handleUpdateStatus(r.id, 'completed')} className="bg-info text-info-foreground hover:bg-info/90">
+                            {updatingReservationId === r.id && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                            Complete
+                          </Button>
                         )}
                         {(r.status === 'pending' || r.status === 'confirmed' || r.status === 'verified' || r.status === 'pending_payment' || r.status === 'pending_verification') && (
-                          <Button size="sm" variant="outline" onClick={() => handleUpdateStatus(r.id, 'cancelled')} className="border-destructive text-destructive hover:bg-destructive/10">Cancel</Button>
+                          <Button size="sm" variant="outline" disabled={updatingReservationId === r.id} onClick={() => handleUpdateStatus(r.id, 'cancelled')} className="border-destructive text-destructive hover:bg-destructive/10">Cancel</Button>
                         )}
                       </div>
                     </td>

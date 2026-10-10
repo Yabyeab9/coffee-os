@@ -250,7 +250,8 @@ export async function getReservations(
     query = query.or(`guest_name.ilike.%${opts.search}%,guest_email.ilike.%${opts.search}%,guest_phone.ilike.%${opts.search}%`);
   }
 
-  const { data, count } = await query;
+  const { data, count, error } = await query;
+  if (error) throw error;
   const items = Array.isArray(data) ? data : [];
   const total = count ?? 0;
   return { data: items, total, page, pageSize, hasMore: from + pageSize < total };

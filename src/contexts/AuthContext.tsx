@@ -36,6 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     profile: null,
     isLoading: true,
   });
+  const [profileRefresh, setProfileRefresh] = useState<{ session: Session; requestId: number } | null>(null);
 
   // Track whether initializeAuth has completed so onAuthStateChange
   // doesn't redundantly re-run for the INITIAL_SESSION.
@@ -56,6 +57,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const profile = await fetchProfileData(userId);
     setAuthState(prev => ({ ...prev, profile }));
   }, [authState.session, fetchProfileData]);
+
+  useEffect(() => {
+    if (!profileRefresh) return;
+
+    let active = true;
+    const userId = profileRefresh.session.user.id;
+
+    fetchProfileData(userId)
+      .then(profile => {
+        if (!active) return;
+        setAuthState(prev => prev.session?.user.id === userId
+          ? { ...prev, profile, isLoading: false }
+          : prev);
+      })
+      .catch(err => {
+        console.error('Auth profile refresh error:', err);
+        if (active) {
+          setAuthState(prev => prev.session?.user.id === userId
+            ? { ...prev, isLoading: false }
+            : prev);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [profileRefresh, fetchProfileData]);
 
   useEffect(() => {
     let mounted = true;
@@ -94,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for post-init auth events (login, logout, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
+      (event, currentSession) => {
         if (!mounted) return;
 
         // INITIAL_SESSION fires synchronously during getSession() — skip it
@@ -103,16 +131,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // For SIGNED_OUT: clear state atomically, no profile fetch needed
         if (!currentSession) {
+          setProfileRefresh(null);
           setAuthState({ session: null, profile: null, isLoading: false });
           return;
         }
 
-        // For SIGNED_IN / TOKEN_REFRESHED: fetch profile, then set atomically
-        // Never expose an intermediate state where session is set but profile is null.
-        const profile = await fetchProfileData(currentSession.user.id);
-        if (mounted) {
-          setAuthState({ session: currentSession, profile, isLoading: false });
-        }
+        // Keep auth callbacks synchronous: Supabase awaits them under its auth
+        // lock, which PostgREST also needs when it obtains the access token.
+        setAuthState(prev => {
+          const sameUser = prev.session?.user.id === currentSession.user.id;
+          return {
+            session: currentSession,
+            profile: sameUser ? prev.profile : null,
+            isLoading: sameUser ? prev.isLoading : true,
+          };
+        });
+        setProfileRefresh(prev => ({
+          session: currentSession,
+          requestId: (prev?.requestId ?? 0) + 1,
+        }));
       }
     );
 

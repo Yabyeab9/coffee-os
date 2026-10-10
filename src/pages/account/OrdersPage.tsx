@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { ShoppingBag, Coffee, Heart, Plus, Sparkles, RefreshCcw, Navigation } from 'lucide-react';
+import { ShoppingBag, Coffee, Heart, Plus, Sparkles, RefreshCcw, Navigation, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -28,7 +28,7 @@ export default function OrdersPage() {
     try {
       const { data } = await supabase
         .from('orders')
-        .select('*, order_items(*, menus(name)), cafes(name)')
+        .select('*, order_items(*, menu_items(name)), cafes(name)')
         .eq('user_id', profile.id)
         .order('created_at', { ascending: false });
       setOrders(data || []);
@@ -41,23 +41,30 @@ export default function OrdersPage() {
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
-  // Realtime: live payment_status + order_status updates without page refresh
+  // Realtime: live inserts, updates & status changes without manual page refresh
   useEffect(() => {
     if (!profile?.id) return;
     const channel = supabase
-      .channel('orders_page_realtime')
+      .channel(`orders_page_realtime_${profile.id}`)
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'orders', filter: `user_id=eq.${profile.id}` },
-        (payload) => {
-          setOrders(prev =>
-            prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o)
-          );
+        { event: '*', schema: 'public', table: 'orders', filter: `user_id=eq.${profile.id}` },
+        () => {
+          fetchOrders();
         },
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [profile?.id]);
+
+    const handleFocus = () => fetchOrders();
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
+  }, [profile?.id, fetchOrders]);
 
   // Also need to add toast import — comment removed, toast already imported line 9
   const cancelOrder = async (orderId: string) => {
@@ -78,7 +85,7 @@ export default function OrdersPage() {
       orderStatus: order.order_status,
       paymentStatus: order.payment_status,
       items: (order.order_items ?? []).map((i: any) => ({
-        name: i.menus?.name || 'Item',
+        name: i.menu_items?.name || 'Item',
         quantity: i.quantity,
       })),
     });
@@ -157,7 +164,7 @@ export default function OrdersPage() {
                             <div key={item.id} className="flex justify-between items-center text-sm text-foreground">
                               <span>
                                 <span className="text-muted-foreground mr-2">{item.quantity}×</span>
-                                {item.menus?.name || 'Item'}
+                                {item.menu_items?.name || 'Item'}
                               </span>
                             </div>
                           ))}
@@ -183,6 +190,11 @@ export default function OrdersPage() {
                           Cancel Order
                         </Button>
                       )}
+                      <Button asChild variant="outline" size="sm" className="gap-1.5 border-border">
+                        <Link to={`/account/receipts?orderId=${order.id}`}>
+                          <FileText className="w-3.5 h-3.5 text-primary" /> Receipt
+                        </Link>
+                      </Button>
                       <Button
                         variant="default" size="sm"
                         className="ml-auto gap-1.5"
@@ -223,7 +235,7 @@ export default function OrdersPage() {
                     </div>
                     <div className="flex-1 mt-2 mb-4">
                       <p className="text-sm text-muted-foreground line-clamp-2">
-                        {order.order_items?.map((i: any) => `${i.quantity}× ${i.menus?.name}`).join(', ')}
+                        {order.order_items?.map((i: any) => `${i.quantity}× ${i.menu_items?.name}`).join(', ')}
                       </p>
                       {idx === 0 && (
                         <div className="inline-flex mt-2 items-center gap-1.5 px-2 py-1 rounded bg-primary/10 text-primary text-[10px] font-semibold uppercase tracking-wider">
@@ -235,6 +247,11 @@ export default function OrdersPage() {
                       <Button variant="outline" size="sm" className="flex-1 gap-2 h-9" asChild>
                         <Link to="/menu">
                           <RefreshCcw className="w-3.5 h-3.5" /> Order Again
+                        </Link>
+                      </Button>
+                      <Button variant="outline" size="sm" className="h-9 shrink-0 gap-1.5 text-muted-foreground" asChild>
+                        <Link to={`/account/receipts?orderId=${order.id}`}>
+                          <FileText className="w-3.5 h-3.5 text-primary" /> Receipt
                         </Link>
                       </Button>
                       <Button

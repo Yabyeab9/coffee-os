@@ -58,7 +58,6 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { label: 'Forecasts', href: '/dashboard/forecasts', icon: LineChart },
       { label: 'Smart Promos', href: '/dashboard/smart-promos', icon: Zap },
       { label: 'Intelligence', href: '/dashboard/intelligence', icon: Lightbulb },
-      { label: 'Dashboards', href: '/dashboard/exec-dashboards', icon: LayoutDashboard },
       { label: 'Reports & Health', href: '/dashboard/reports-health', icon: FileText },
     ],
   },
@@ -66,7 +65,6 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     title: 'Customer Intelligence',
     items: [
       { label: 'Financial Health', href: '/dashboard/financial-health', icon: TrendingUp },
-      { label: 'Anomaly Detection', href: '/dashboard/anomalies', icon: AlertTriangle },
       { label: 'Recovery Engine', href: '/dashboard/recovery', icon: UserCheck },
       { label: 'CLV & Retention', href: '/dashboard/customer-intelligence', icon: Target },
     ],
@@ -90,7 +88,6 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     items: [
       { label: 'Loyalty Config', href: '/dashboard/loyalty', icon: Heart },
       { label: 'Users', href: '/dashboard/users', icon: Users },
-      { label: 'SEO', href: '/dashboard/seo', icon: Globe },
       { label: 'Settings', href: '/dashboard/settings', icon: Settings },
     ],
   },

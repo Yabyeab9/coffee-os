@@ -8,13 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { sanitizeName } from './InChatDrinkCard';
-
-// ── QR code placeholder (renders as text for now; replace with qrcode lib if desired)
-function QRPlaceholder({ value, size = 100 }: { value: string; size?: number }) {
-  // Use Google Charts QR API as a lightweight approach
-  const url = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(value)}`;
-  return <img src={url} alt="Gift QR code" width={size} height={size} className="rounded-lg border border-border" />;
-}
+import QRCodeDataUrl from '@/components/ui/qrcodedataurl';
 
 interface Props {
   open: boolean;
@@ -100,13 +94,20 @@ export default function GiftModal({ open, onClose, drinkId, drinkName, drinkPric
       let audioUrl: string | null = null;
 
       if (audioBlob) {
-        const fileName = `${profile.id}/${Date.now()}-gift-note.webm`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('gift-audio')
-          .upload(fileName, audioBlob, { contentType: 'audio/webm' });
-        if (!uploadError && uploadData) {
-          const { data: pub } = supabase.storage.from('gift-audio').getPublicUrl(uploadData.path);
-          audioUrl = pub.publicUrl;
+        try {
+          const fileName = `${profile.id}/${Date.now()}-gift-note.webm`;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('gift-audio')
+            .upload(fileName, audioBlob, { contentType: 'audio/webm' });
+          if (!uploadError && uploadData) {
+            const { data: pub } = supabase.storage.from('gift-audio').getPublicUrl(uploadData.path);
+            audioUrl = pub.publicUrl;
+          } else {
+            // Voice notes are a bonus — the gift works without one.
+            toast.info('Voice note could not be attached — the gift is ready anyway.');
+          }
+        } catch {
+          // Storage unavailable — continue without the voice note.
         }
       }
 
@@ -245,7 +246,9 @@ export default function GiftModal({ open, onClose, drinkId, drinkName, drinkPric
 
         {step === 'success' && giftQr && (
           <div className="flex flex-col items-center gap-4 py-2">
-            <QRPlaceholder value={giftQr} size={120} />
+            <div className="bg-white rounded-xl p-2.5">
+              <QRCodeDataUrl text={giftQr} width={120} />
+            </div>
             <div className="text-center space-y-1">
               <p className="text-sm font-medium">{cleanName} → {recipientName}</p>
               <p className="text-xs text-muted-foreground">Valid for 7 days. Share this QR code with {recipientName} to redeem at the café.</p>
