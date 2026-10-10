@@ -43,6 +43,11 @@ import SmartPromosPage from './pages/dashboard/SmartPromosPage';
 import IntelligencePage from './pages/dashboard/IntelligencePage';
 import ExecDashboardsPage from './pages/dashboard/ExecDashboardsPage';
 import ReportsHealthPage from './pages/dashboard/ReportsHealthPage';
+import FinancialHealthPage from './pages/dashboard/FinancialHealthPage';
+import CustomerRecoveryPage from './pages/dashboard/CustomerRecoveryPage';
+import CustomerIntelligencePage from './pages/dashboard/CustomerIntelligencePage';
+import AnomalyDetectionPage from './pages/dashboard/AnomalyDetectionPage';
+import ChallengesGamificationPage from './pages/dashboard/ChallengesGamificationPage';
 
 // ── Account Pages ─────────────────────────────────────────────────────────────
 import AccountDashboardPage from './pages/account/AccountDashboardPage';
@@ -97,6 +102,7 @@ export const publicRoutes: RouteConfig[] = [
   { name: 'Privacy',     path: '/privacy',      element: <PrivacyPage />,       public: true },
   { name: 'Payment Success', path: '/payment/success', element: <PaymentSuccessPage />, public: true },
   { name: 'Payment Failure', path: '/payment-failure', element: <PaymentFailurePage />, public: true },
+  { name: 'Order Receipt', path: '/orders/:id/receipt', element: <ReceiptsPage />, public: true },
 ];
 
 // ── Auth routes ───────────────────────────────────────────────────────────────
@@ -113,6 +119,7 @@ export const accountRoutes: RouteConfig[] = [
   { name: 'Membership Card', path: 'membership-card', element: <MembershipCardPage /> },
   { name: 'Wallet', path: 'wallet', element: <WalletPage /> },
   { name: 'Digital Receipts', path: 'receipts', element: <ReceiptsPage /> },
+  { name: 'Order Receipt', path: 'orders/:id/receipt', element: <ReceiptsPage /> },
   { name: 'Loyalty & Rewards', path: 'loyalty', element: <LoyaltyPage /> },
   { name: 'Achievements', path: 'achievements', element: <AchievementsPage /> },
   { name: 'Leaderboard', path: 'leaderboard', element: <LeaderboardPage /> },
@@ -163,6 +170,11 @@ export const dashboardRoutes: RouteConfig[] = [
   { name: 'Settings',      path: 'settings',      element: <SettingsPage />,   roles: ['admin', 'owner', 'manager'] },
 
   { name: 'Store Operations', path: 'store-ops',  element: <StoreOpsAdminPage /> },
+  { name: 'Financial Health', path: 'financial-health', element: <FinancialHealthPage /> },
+  { name: 'Recovery Engine', path: 'recovery', element: <CustomerRecoveryPage /> },
+  { name: 'CLV & Retention', path: 'customer-intelligence', element: <CustomerIntelligencePage /> },
+  { name: 'Anomaly Detection', path: 'anomalies', element: <AnomalyDetectionPage /> },
+  { name: 'Gamification', path: 'gamification', element: <ChallengesGamificationPage /> },
 ];
 
 // Legacy flat export used by any remaining consumers

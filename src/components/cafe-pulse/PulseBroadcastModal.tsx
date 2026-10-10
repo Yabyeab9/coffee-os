@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription
 } from '@/components/ui/dialog';
@@ -53,15 +53,23 @@ export default function PulseBroadcastModal({
   const [selectedActivity, setSelectedActivity] = useState<ActivityType>(currentActivity ?? 'working');
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (!open) return;
+    setSelectedMood(currentMood ?? 'Quiet Focus');
+    setSelectedActivity(currentActivity ?? 'working');
+  }, [open, currentMood, currentActivity]);
+
   const handleBroadcast = async () => {
     if (!cafeId) return;
     setSubmitting(true);
     try {
       // Clean previous signal from this session
-      await supabase
+      const { error: removeError } = await supabase
         .from('cafe_pulse_signals')
         .delete()
+        .eq('cafe_id', cafeId)
         .eq('session_token', sessionToken);
+      if (removeError) throw removeError;
 
       // Insert new signal with 2 hour TTL
       const { error } = await supabase.from('cafe_pulse_signals').insert({
@@ -85,10 +93,12 @@ export default function PulseBroadcastModal({
   const handleRevoke = async () => {
     setSubmitting(true);
     try {
-      await supabase
+      const { error } = await supabase
         .from('cafe_pulse_signals')
         .delete()
+        .eq('cafe_id', cafeId)
         .eq('session_token', sessionToken);
+      if (error) throw error;
 
       toast.info('Your pulse broadcast has been discontinued');
       onSignalRevoked();
@@ -127,6 +137,7 @@ export default function PulseBroadcastModal({
                   <button
                     key={m.id}
                     type="button"
+                    aria-pressed={isSelected}
                     onClick={() => setSelectedMood(m.id)}
                     className={`p-2.5 rounded-xl border text-left transition-all ${
                       isSelected
@@ -155,6 +166,7 @@ export default function PulseBroadcastModal({
                 <button
                   key={act.id}
                   type="button"
+                  aria-pressed={selectedActivity === act.id}
                   onClick={() => setSelectedActivity(act.id)}
                   className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${
                     selectedActivity === act.id

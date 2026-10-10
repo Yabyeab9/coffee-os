@@ -1,95 +1,71 @@
-import React, { useMemo } from 'react';
-import { Volume2, VolumeX, Users, Sparkles, Compass, Headphones } from 'lucide-react';
+import { BookOpen, MessageCircle, ShieldCheck, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 
 interface Props {
   signalsCount: number;
-  moodCounts: Record<string, number>;
   activityCounts: Record<string, number>;
 }
 
-export default function AtmosphereAcousticRadar({
-  signalsCount,
-  moodCounts,
-  activityCounts,
-}: Props) {
-  const acousticAnalysis = useMemo(() => {
-    const total = Math.max(1, signalsCount);
-    const studying = (activityCounts['studying'] || 0) + (activityCounts['reading'] || 0);
-    const working = activityCounts['working'] || 0;
-    const socializing = activityCounts['socializing'] || 0;
-    const quietFocusRatio = Math.round(((studying + working) / total) * 100);
+const ACTIVITY_GROUPS = [
+  { label: 'Focus', activities: ['working', 'reading', 'studying'], icon: BookOpen, color: 'bg-teal-400' },
+  { label: 'Connect', activities: ['chatting', 'socializing'], icon: MessageCircle, color: 'bg-orange-300' },
+  { label: 'Create & unwind', activities: ['creating', 'relaxing'], icon: Sparkles, color: 'bg-amber-300' },
+];
 
-    let acousticMode = 'Balanced Ambient Flow';
-    let decibelEst = '48 - 54 dB';
-    let seatingTip = 'Communal tables and bar counter have a gentle conversational cadence.';
-    let icon = Volume2;
-
-    if (quietFocusRatio >= 65) {
-      acousticMode = 'Deep Work Sanctuary';
-      decibelEst = '38 - 45 dB (Library Whispers)';
-      seatingTip = 'Back banquette and window single-seats are in peak focus mode. Perfect for deep creative sprints.';
-      icon = VolumeX;
-    } else if (socializing / total >= 0.45) {
-      acousticMode = 'Vibrant Social Gathering';
-      decibelEst = '58 - 66 dB (Warm Buzz)';
-      seatingTip = 'Center communal table is lively with creative discourse and laughter.';
-      icon = Volume2;
-    }
-
-    return {
-      quietFocusRatio,
-      acousticMode,
-      decibelEst,
-      seatingTip,
-      icon,
-    };
-  }, [signalsCount, moodCounts, activityCounts]);
-
-  const Icon = acousticAnalysis.icon;
+export default function AtmosphereAcousticRadar({ signalsCount, activityCounts }: Props) {
+  const activityTotal = Object.values(activityCounts).reduce((sum, count) => sum + count, 0);
+  const groups = ACTIVITY_GROUPS.map(group => ({
+    ...group,
+    count: group.activities.reduce((sum, activity) => sum + (activityCounts[activity] ?? 0), 0),
+  }));
+  const hasPrivateSample = signalsCount < 3;
+  const hasActivityData = activityTotal > 0;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4 space-y-3.5">
-      <div className="flex items-center justify-between border-b border-border/40 pb-2">
-        <div className="flex items-center gap-2">
-          <Headphones className="w-4 h-4 text-primary" />
-          <div>
-            <h4 className="text-xs font-semibold text-foreground">Acoustic & Vibe Guidance</h4>
-            <p className="text-[10px] text-muted-foreground">Collective wavelength analysis</p>
-          </div>
+    <section className="border-y border-border/70 py-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Room reading</p>
+          <h3 className="mt-1 font-heading text-lg font-semibold text-foreground">What the room is here for</h3>
         </div>
-        <Badge variant="outline" className="text-[9px] font-normal border-primary/30 text-primary bg-primary/5">
-          {acousticAnalysis.acousticMode}
+        <Badge variant="outline" className="gap-1.5 text-[10px] font-normal">
+          <ShieldCheck className="h-3 w-3" /> Guest-selected, not recorded
         </Badge>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 text-xs">
-        <div className="p-2.5 rounded-lg bg-muted/20 border border-border/40">
-          <span className="text-[10px] text-muted-foreground">Acoustic Volume</span>
-          <p className="font-semibold text-foreground mt-0.5">{acousticAnalysis.decibelEst}</p>
-        </div>
-        <div className="p-2.5 rounded-lg bg-muted/20 border border-border/40">
-          <span className="text-[10px] text-muted-foreground">Focus Resonance</span>
-          <p className="font-semibold text-foreground mt-0.5">{acousticAnalysis.quietFocusRatio}% Focus Share</p>
-        </div>
-      </div>
-
-      <div>
-        <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
-          <span>Sanctuary Focus Index</span>
-          <span>{acousticAnalysis.quietFocusRatio}%</span>
-        </div>
-        <Progress value={acousticAnalysis.quietFocusRatio} className="h-1.5" />
-      </div>
-
-      <div className="p-2.5 rounded-lg bg-primary/5 border border-primary/20 flex items-start gap-2 text-xs">
-        <Compass className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
-          <strong className="text-foreground">Seating Guidance: </strong>
-          {acousticAnalysis.seatingTip}
+      {hasPrivateSample || !hasActivityData ? (
+        <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+          {hasPrivateSample
+            ? 'Activity stays private until at least three guests opt in. No audio is captured or analyzed.'
+            : 'There is not enough activity detail in the current pulse to describe a room pattern.'}
         </p>
-      </div>
-    </div>
+      ) : (
+        <div className="grid gap-5 sm:grid-cols-3">
+          {groups.map(group => {
+            const Icon = group.icon;
+            const share = Math.round((group.count / activityTotal) * 100);
+            return (
+              <div key={group.label} className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <Icon className="h-4 w-4 text-muted-foreground" />{group.label}
+                  </span>
+                  <span className="text-xs tabular-nums text-muted-foreground">{share}%</span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-muted" aria-label={`${group.label}: ${share}% of activity signals`}>
+                  <div className={`h-full rounded-full transition-[width] duration-500 ${group.color}`} style={{ width: `${share}%` }} />
+                </div>
+                <p className="text-xs text-muted-foreground">{group.count} voluntary activity {group.count === 1 ? 'signal' : 'signals'}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <p className="mt-4 flex items-center gap-2 border-t border-border/50 pt-3 text-[11px] text-muted-foreground">
+        <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+        A snapshot of chosen intentions, not a measurement of sound, occupancy, or individual behavior.
+      </p>
+    </section>
   );
 }

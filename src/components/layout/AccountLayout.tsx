@@ -26,9 +26,6 @@ const NAV_GROUPS = [
     items: [
       { name: 'AI Barista',      path: '/account/ai-recommendations',  icon: Sparkles },
       { name: 'Café Pulse',      path: '/account/mood-pulse',          icon: Radio },
-      { name: 'Coffee Journey',  path: '/account/coffee-journey',      icon: Flame },
-      { name: 'Coffee Passport', path: '/account/coffee-passport',     icon: GitBranch },
-      { name: 'Bean Explorer',   path: '/account/bean-explorer',       icon: Leaf },
       { name: 'Seasonal',        path: '/account/seasonal-discoveries',icon: FlaskConical },
       { name: 'Try Something New', path: '/account/try-something-new', icon: Star },
       { name: 'Challenges',      path: '/account/coffee-challenges',   icon: Trophy },
@@ -37,16 +34,12 @@ const NAV_GROUPS = [
   {
     label: 'Community',
     items: [
-      { name: 'Achievements',    path: '/account/achievements',        icon: Trophy },
-      { name: 'Leaderboard',     path: '/account/leaderboard',         icon: Users },
       { name: 'Referrals',       path: '/account/referrals',           icon: MessageCircle },
-      { name: 'Streaks',         path: '/account/streaks',             icon: Flame },
     ],
   },
   {
     label: 'Account',
     items: [
-      { name: 'Membership Card', path: '/account/membership-card',     icon: CreditCard },
       { name: 'Subscriptions',   path: '/account/subscriptions',       icon: Coffee },
       { name: 'Profile',         path: '/account/profile',             icon: User },
       { name: 'Notifications',   path: '/account/notifications',       icon: Bell },

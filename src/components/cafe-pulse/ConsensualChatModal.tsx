@@ -5,7 +5,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { MessageCircle, Send, ShieldCheck, Clock, Lock, CheckCircle, XCircle } from 'lucide-react';
+import { MessageCircle, Send, ShieldCheck, Lock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
@@ -156,7 +156,7 @@ export default function ConsensualChatModal({
     if (!newTopic.trim() || !cafeId) return;
 
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('cafe_pulse_conversations')
         .insert({
           cafe_id: cafeId,
@@ -184,10 +184,11 @@ export default function ConsensualChatModal({
       if (status === 'accepted') {
         updatePayload.recipient_session = sessionToken;
       }
-      await supabase
+      const { error } = await supabase
         .from('cafe_pulse_conversations')
         .update(updatePayload)
         .eq('id', convId);
+      if (error) throw error;
 
       toast.success(status === 'accepted' ? 'Connection accepted! Channel active.' : 'Invitation declined.');
       fetchConversations();
@@ -225,7 +226,9 @@ export default function ConsensualChatModal({
             </div>
 
             <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
-              {conversations.length === 0 ? (
+              {loading ? (
+                <p role="status" className="py-4 text-center text-xs text-muted-foreground">Syncing open channels…</p>
+              ) : conversations.length === 0 ? (
                 <p className="text-xs text-muted-foreground py-4 text-center">
                   No active channels.
                 </p>

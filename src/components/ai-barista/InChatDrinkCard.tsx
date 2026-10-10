@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { ShoppingCart, Sliders, Activity, Check } from 'lucide-react';
+import { ShoppingCart, Sliders, Activity, Check, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import FlavorRadarWidget, { FlavorProfile } from './FlavorRadarWidget';
-import { supabase } from '@/lib/supabase';
+import { addToTray } from '@/lib/tray';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import type { DrinkCardData } from './chat-tags';
 
 // Strip DB artifacts from product names
 export function sanitizeName(raw: string): string {
@@ -19,19 +20,12 @@ export function sanitizeName(raw: string): string {
     .trim();
 }
 
-export interface DrinkCardData {
-  id: string;
-  name: string;
-  price: number | null;
-  image_url: string | null;
-  match_pct?: number;
-  flavor_profile?: Partial<FlavorProfile>;
-  cafe_id?: string;
-}
+export type { DrinkCardData };
 
 interface Props {
   drink: DrinkCardData;
   onAddToCart?: (drink: DrinkCardData, options: CartOptions) => void;
+  onLogCaffeine?: (drink: DrinkCardData, caffeineMg: number) => void;
 }
 
 export interface CartOptions {
@@ -48,7 +42,7 @@ const MILK_OPTIONS = [
   { value: 'none',  label: 'No milk' },
 ];
 
-export default function InChatDrinkCard({ drink, onAddToCart }: Props) {
+export default function InChatDrinkCard({ drink, onAddToCart, onLogCaffeine }: Props) {
   const { profile } = useAuth();
   const [added, setAdded] = useState(false);
   const [customizeOpen, setCustomizeOpen] = useState(false);
@@ -57,27 +51,25 @@ export default function InChatDrinkCard({ drink, onAddToCart }: Props) {
   const [sugar, setSugar] = useState([2]);
 
   const cleanName = sanitizeName(drink.name);
+  const cafeId = drink.cafe_id ?? profile?.cafe_id ?? '';
 
-  const handleAddToCart = async (options: CartOptions) => {
-    if (!profile?.id || !drink.cafe_id) {
-      toast.error('Please sign in to add items to your cart.');
+  const handleAddToCart = (options: CartOptions) => {
+    if (!cafeId) {
+      toast.error('This drink is not linked to your café yet.');
       return;
     }
-    // Upsert cart in orders draft state
-    const { error } = await supabase.from('orders').insert({
-      user_id: profile.id,
-      cafe_id: drink.cafe_id,
-      status: 'draft',
-      order_type: 'dine_in',
-      total_amount: drink.price ?? 0,
-      order_items: [{ menu_item_id: drink.id, quantity: 1, unit_price: drink.price, customization: options }],
-    });
-    if (error) {
-      toast.error('Failed to add to cart');
-      return;
-    }
+    addToTray({
+      id: drink.id,
+      name: cleanName,
+      price: drink.price,
+      image_url: drink.image_url,
+      cafe_id: cafeId,
+      caffeine_mg: drink.caffeine_mg ?? null,
+    }, options);
     setAdded(true);
-    toast.success(`${cleanName} added to cart`);
+    toast.success(`${cleanName} added to your tray`, {
+      description: 'Open the menu page to check out whenever you are ready.',
+    });
     onAddToCart?.(drink, options);
     setTimeout(() => setAdded(false), 2500);
   };
@@ -137,6 +129,16 @@ export default function InChatDrinkCard({ drink, onAddToCart }: Props) {
               >
                 <Activity className="w-3 h-3" />
                 Flavor
+              </button>
+            )}
+            {(drink.caffeine_mg ?? 0) > 0 && onLogCaffeine && (
+              <button
+                onClick={() => onLogCaffeine(drink, drink.caffeine_mg ?? 0)}
+                title={`Log ${drink.caffeine_mg} mg of caffeine from this drink`}
+                className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-foreground/15 hover:border-foreground/30 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Zap className="w-3 h-3" />
+                Log {drink.caffeine_mg}mg
               </button>
             )}
           </div>

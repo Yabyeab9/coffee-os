@@ -1,5 +1,6 @@
+import * as Sentry from '@sentry/react';
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -101,12 +102,38 @@ function AccountShell() {
   return <AccountLayout />;
 }
 
+function RouteErrorBoundary({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+
+  return (
+    <Sentry.ErrorBoundary
+      key={location.key}
+      fallback={({ resetError }) => (
+        <div role="alert" className="mx-auto flex min-h-[50vh] max-w-xl flex-col items-center justify-center gap-4 p-6 text-center">
+          <p className="text-foreground">This page hit an unexpected error. Try again or return home.</p>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={resetError} className="rounded-md border border-border px-4 py-2 text-sm hover:bg-secondary">
+              Try again
+            </button>
+            <Link to="/" className="rounded-md border border-border px-4 py-2 text-sm hover:bg-secondary">
+              Return home
+            </Link>
+          </div>
+        </div>
+      )}
+    >
+      {children}
+    </Sentry.ErrorBoundary>
+  );
+}
+
 const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
         <AuthProvider>
           <IntersectObserver />
+          <RouteErrorBoundary>
           <Routes>
           {/* ── Public routes ───────────────────────────────────────────── */}
           <Route path="/" element={<HomePage />} />
@@ -204,7 +231,8 @@ const App: React.FC = () => {
 
           {/* ── Fallback ────────────────────────────────────────────────── */}
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+          </Routes>
+          </RouteErrorBoundary>
         <Toaster richColors position="top-right" />
       </AuthProvider>
     </Router>

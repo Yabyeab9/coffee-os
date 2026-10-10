@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
+import { Plus, Loader2 } from 'lucide-react';
 
 export interface CaffeineLog {
   drink_name: string;
@@ -10,8 +11,17 @@ export interface CaffeineLog {
   consumed_at: string;
 }
 
+export interface CaffeineSuggestion {
+  name: string;
+  caffeine_mg: number;
+}
+
 interface Props {
   logs: CaffeineLog[];
+  /** Menu-derived suggestions so logged amounts come from real menu data. */
+  suggestions?: CaffeineSuggestion[];
+  /** Called with (drink name, mg). Returns falsey on failure. */
+  onQuickLog?: (drinkName: string, caffeineMg: number) => Promise<boolean>;
 }
 
 const HALF_LIFE_HOURS = 5.7;
@@ -27,12 +37,32 @@ function sleepRisk(mgAtBedtime: number): { label: string; color: string } {
   return { label: 'Low', color: 'text-success' };
 }
 
-export default function CaffeineTrackerCard({ logs }: Props) {
+export default function CaffeineTrackerCard({ logs, suggestions = [], onQuickLog }: Props) {
   const now = new Date();
+  const [logOpen, setLogOpen] = useState(false);
+  const [customName, setCustomName] = useState('');
+  const [customMg, setCustomMg] = useState('');
+  const [saving, setSaving] = useState(false);
+
   const todayLogs = logs.filter(l => {
     const d = new Date(l.consumed_at);
     return d.toDateString() === now.toDateString();
   });
+
+  const submitLog = async (drinkName: string, caffeineMg: number) => {
+    if (!onQuickLog || !drinkName.trim() || !(caffeineMg > 0)) return;
+    setSaving(true);
+    try {
+      const ok = await onQuickLog(drinkName.trim(), Math.round(caffeineMg));
+      if (ok) {
+        setLogOpen(false);
+        setCustomName('');
+        setCustomMg('');
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // Build 24-point hourly curve
   const chartData = useMemo(() => {
@@ -92,15 +122,15 @@ export default function CaffeineTrackerCard({ logs }: Props) {
                 ) : null
               }
             />
-            <ReferenceLine x={BEDTIME_HOUR} stroke="#E5E7EB" strokeDasharray="3 3" />
-            <ReferenceLine x={Math.round(currentHour)} stroke="#111827" strokeDasharray="2 2" strokeOpacity={0.4} />
+            <ReferenceLine x={BEDTIME_HOUR} stroke="hsl(var(--destructive))" strokeDasharray="3 3" strokeOpacity={0.8} />
+            <ReferenceLine x={Math.round(currentHour)} stroke="hsl(var(--muted-foreground))" strokeDasharray="2 2" strokeOpacity={0.6} />
             <Line
               type="monotone"
               dataKey="mg"
-              stroke="#111827"
-              strokeWidth={1.5}
+              stroke="hsl(var(--primary))"
+              strokeWidth={2}
               dot={false}
-              activeDot={{ r: 3, fill: '#111827', strokeWidth: 0 }}
+              activeDot={{ r: 3, fill: 'hsl(var(--primary))' }}
             />
           </LineChart>
         </ResponsiveContainer>
@@ -118,6 +148,70 @@ export default function CaffeineTrackerCard({ logs }: Props) {
               <span className="shrink-0 ml-2">{l.caffeine_mg}mg · {new Date(l.consumed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {onQuickLog && (
+        <div className="pt-2 border-t border-border/40 space-y-2">
+          {!logOpen ? (
+            <button
+              type="button"
+              onClick={() => setLogOpen(true)}
+              className="w-full inline-flex items-center justify-center gap-1 text-xs px-2 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+            >
+              <Plus className="w-3 h-3" /> Log a drink
+            </button>
+          ) : (
+            <div className="space-y-2">
+              {suggestions.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {suggestions.slice(0, 4).map(s => (
+                    <button
+                      key={s.name}
+                      type="button"
+                      disabled={saving}
+                      onClick={() => void submitLog(s.name, s.caffeine_mg)}
+                      className="text-[10px] px-1.5 py-0.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors disabled:opacity-50"
+                      title={`Log ${s.caffeine_mg}mg from the menu`}
+                    >
+                      {s.name} · {s.caffeine_mg}mg
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-1.5">
+                <input
+                  value={customName}
+                  onChange={e => setCustomName(e.target.value)}
+                  placeholder="Drink"
+                  maxLength={60}
+                  className="flex-1 min-w-0 text-xs px-2 py-1.5 rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <input
+                  value={customMg}
+                  onChange={e => setCustomMg(e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder="mg"
+                  inputMode="numeric"
+                  className="w-14 text-xs px-2 py-1.5 rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <button
+                  type="button"
+                  disabled={saving || !customName.trim() || !(Number(customMg) > 0)}
+                  onClick={() => void submitLog(customName, Number(customMg))}
+                  className="px-2 py-1.5 rounded-md bg-primary text-primary-foreground text-xs disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save'}
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLogOpen(false)}
+                className="text-[10px] text-muted-foreground hover:text-foreground"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

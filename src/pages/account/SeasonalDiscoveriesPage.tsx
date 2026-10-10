@@ -1,243 +1,378 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { Calendar, Coffee, X, QrCode, Plus, Heart, RotateCcw } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { Badge } from '@/components/ui/badge';
+import {
+  Sparkles, Coffee, Utensils, CheckCircle2, ShoppingBag,
+  Calendar, Flame, Tag, ArrowRight, Loader2, HelpCircle
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import QRCodeDataUrl from '@/components/ui/qrcodedataurl';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
-export default function ReservationsPage() {
-  const { profile } = useAuth();
-  const [reservations, setReservations] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchReservations() {
-      if (!profile?.id) return;
-      try {
-        const { data } = await supabase
-          .from('reservations')
-          .select(`
-            *,
-            cafes(name),
-            orders(
-              total_amount,
-              payment_status,
-              order_items(
-                quantity,
-                menu_items(name)
-              )
-            )
-          `)
-          .eq('user_id', profile.id)
-          .order('reservation_date', { ascending: false });
-        setReservations(data || []);
-      } catch {
-        toast.error('Could not load your reservations. Please try again.');
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    fetchReservations();
-  }, [profile?.id]);
-
-  const cancelReservation = async (id: string) => {
-    try {
-      const { error } = await supabase.from('reservations').update({ status: 'cancelled' }).eq('id', id);
-      if (error) throw error;
-      setReservations(prev => prev.map(r => r.id === id ? { ...r, status: 'cancelled' } : r));
-      toast.success('Reservation cancelled');
-    } catch {
-      toast.error('Could not cancel the reservation. Please try again.');
-    }
+interface SeasonalItem {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  currency: string;
+  image_url?: string;
+  category_id?: string;
+  is_available: boolean;
+  seasonal: boolean;
+  status: string;
+  tags?: string[];
+  flavor_profile?: {
+    notes?: string[];
+    roast?: string;
+    intensity?: number;
+    type?: string;
   };
+  availability_schedule?: {
+    start_date?: string;
+    end_date?: string;
+    season?: string;
+  };
+  menu_categories?: {
+    id: string;
+    name: string;
+    description?: string;
+  };
+  hasOrdered?: boolean;
+}
 
-  const handleRebook = () => {
-    toast.success('Reservation details copied. Redirecting to booking...');
+export default function SeasonalDiscoveriesPage() {
+  const { profile } = useAuth();
+  const userId = profile?.id;
+  const navigate = useNavigate();
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+
+  // 1. Query seasonal items and categories from authoritative database
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['seasonal_offerings', userId],
+    queryFn: async () => {
+      // Query active seasonal menu items
+      const { data: menuData, error: menuError } = await supabase
+        .from('menus')
+        .select(`
+          *,
+          menu_categories:category_id (id, name, description)
+        `)
+        .eq('seasonal', true)
+        .eq('status', 'active')
+        .order('name');
+
+      if (menuError) throw menuError;
+
+      // Query user order items to compute genuine tried status
+      let userPurchasedItemIds = new Set<string>();
+      if (userId) {
+        const { data: userOrders } = await supabase
+          .from('orders')
+          .select('id, order_items(menu_item_id)')
+          .eq('user_id', userId)
+          .in('payment_status', ['paid', 'completed']);
+
+        userOrders?.forEach(ord => {
+          ord.order_items?.forEach((oi: any) => {
+            if (oi.menu_item_id) userPurchasedItemIds.add(oi.menu_item_id);
+          });
+        });
+      }
+
+      // Filter by active availability schedule dates
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+
+      const activeItems = (menuData || []).filter((item: SeasonalItem) => {
+        const schedule = item.availability_schedule;
+        if (!schedule) return true;
+        if (schedule.start_date && schedule.start_date > todayStr) return false;
+        if (schedule.end_date && schedule.end_date < todayStr) return false;
+        return true;
+      }).map((item: SeasonalItem) => ({
+        ...item,
+        hasOrdered: userPurchasedItemIds.has(item.id),
+      }));
+
+      return activeItems as SeasonalItem[];
+    },
+  });
+
+  const seasonalItems = data || [];
+
+  // Derive categories dynamically from retrieved active items
+  const categories = useMemo(() => {
+    const catMap = new Map<string, { id: string; name: string }>();
+    seasonalItems.forEach(item => {
+      if (item.menu_categories) {
+        catMap.set(item.menu_categories.id, {
+          id: item.menu_categories.id,
+          name: item.menu_categories.name,
+        });
+      }
+    });
+    return Array.from(catMap.values());
+  }, [seasonalItems]);
+
+  // Filter items by category
+  const filteredItems = useMemo(() => {
+    if (selectedCategory === 'all') return seasonalItems;
+    return seasonalItems.filter(item => item.menu_categories?.id === selectedCategory);
+  }, [seasonalItems, selectedCategory]);
+
+  // Calculate real progress
+  const totalItems = seasonalItems.length;
+  const triedItems = seasonalItems.filter(item => item.hasOrdered).length;
+  const progressPercentage = totalItems > 0 ? Math.round((triedItems / totalItems) * 100) : 0;
+
+  // Active season title inferred from database schedule or current month
+  const currentSeason = useMemo(() => {
+    const firstWithSeason = seasonalItems.find(i => i.availability_schedule?.season);
+    if (firstWithSeason?.availability_schedule?.season) {
+      return `${firstWithSeason.availability_schedule.season} Edition`;
+    }
+    const month = new Date().getMonth();
+    if (month >= 2 && month <= 4) return 'Spring Harvest';
+    if (month >= 5 && month <= 7) return 'Summer Harvest';
+    if (month >= 8 && month <= 10) return 'Autumn Harvest';
+    return 'Winter Warmth';
+  }, [seasonalItems]);
+
+  const handleOrder = (item: SeasonalItem) => {
+    navigate(`/menu?search=${encodeURIComponent(item.name)}`);
   };
 
   if (isLoading) {
-    return <div className="p-10 flex justify-center min-h-[400px] items-center"><Coffee className="w-8 h-8 text-primary animate-pulse" /></div>;
+    return (
+      <div className="p-4 md:p-8 max-w-5xl mx-auto flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const upcomingStatuses = ['pending', 'pending_payment', 'pending_verification', 'confirmed', 'paid'];
-  const upcomingReservations = reservations.filter(r => {
-    const resDate = new Date(r.reservation_date);
-    return resDate >= today && upcomingStatuses.includes(r.status);
-  });
-  
-  const historyReservations = reservations.filter(r => {
-    const resDate = new Date(r.reservation_date);
-    return resDate < today || !upcomingStatuses.includes(r.status);
-  });
+  if (isError) {
+    return (
+      <div className="p-4 md:p-8 max-w-5xl mx-auto text-center space-y-4">
+        <p className="text-destructive font-medium">Failed to load seasonal discoveries.</p>
+        <Button variant="outline" onClick={() => refetch()}>Retry</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+      {/* Page Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div className="flex items-center gap-3">
-          <Calendar className="w-8 h-8 text-primary" />
-          <h1 className="text-3xl font-heading font-semibold text-foreground">Reservations</h1>
+          <Sparkles className="w-8 h-8 text-primary" />
+          <div>
+            <h1 className="text-3xl font-heading font-semibold text-foreground">Seasonal Discoveries</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Limited-run roasts, cold crafts, and seasonal bakery items currently in rotation.
+            </p>
+          </div>
         </div>
-        <Button asChild className="shrink-0 gap-2 font-medium shadow-md">
-          <Link to="/reservations">
-            <Plus className="w-4 h-4" /> New Reservation
-          </Link>
-        </Button>
+        <Badge variant="secondary" className="self-start md:self-auto text-xs px-3 py-1 font-semibold border-primary/20">
+          {currentSeason}
+        </Badge>
       </div>
 
-      <Tabs defaultValue="upcoming" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-8 p-1">
-          <TabsTrigger value="upcoming" className="font-medium">Upcoming ({upcomingReservations.length})</TabsTrigger>
-          <TabsTrigger value="history" className="font-medium">History</TabsTrigger>
-        </TabsList>
+      {/* Progress & Milestone Card (Calculated from verified customer orders) */}
+      {totalItems > 0 && (
+        <div className="glass rounded-2xl p-6 md:p-8 border border-border relative overflow-hidden bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
+          <div className="flex flex-col md:flex-row items-center gap-6 justify-between">
+            <div className="flex-1 w-full space-y-3">
+              <div className="flex justify-between items-end">
+                <div>
+                  <h2 className="text-lg md:text-xl font-bold text-foreground">Seasonal Taste Exploration</h2>
+                  <p className="text-xs md:text-sm text-muted-foreground">
+                    Try our seasonal selections before their harvest window closes.
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-2xl md:text-3xl font-black text-primary font-mono">{triedItems}</span>
+                  <span className="text-muted-foreground text-sm font-medium">/{totalItems} sampled</span>
+                </div>
+              </div>
 
-        <TabsContent value="upcoming" className="space-y-4 outline-none">
-          {upcomingReservations.length === 0 ? (
-            <div className="py-24 text-center text-muted-foreground glass rounded-xl border border-border">
-              <Calendar className="w-12 h-12 mx-auto mb-4 opacity-20" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">No upcoming reservations</h3>
-              <p className="mb-6 max-w-md mx-auto">You don't have any table bookings coming up. Secure your spot at our café.</p>
-              <Button asChild variant="outline">
-                <Link to="/reservations">Book a Table</Link>
+              <Progress value={progressPercentage} className="h-2.5" />
+
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>{progressPercentage}% Completed</span>
+                {totalItems - triedItems > 0 ? (
+                  <span>{totalItems - triedItems} remaining to experience</span>
+                ) : (
+                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> All seasonal items sampled!
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Zero State if no seasonal items are active */}
+      {totalItems === 0 && (
+        <div className="glass p-12 rounded-2xl border border-border text-center space-y-4">
+          <Coffee className="w-12 h-12 text-muted-foreground/30 mx-auto" />
+          <h3 className="font-semibold text-xl text-foreground">No Seasonal Offerings Currently Active</h3>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto">
+            Our baristas and roasters are currently preparing the upcoming season's harvest collection. In the meantime, discover our signature origin espresso and pour-over selections.
+          </p>
+          <Button asChild variant="outline" className="mt-2">
+            <Link to="/menu">Explore Full Menu</Link>
+          </Button>
+        </div>
+      )}
+
+      {/* Category Tabs */}
+      {categories.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-border">
+          <Button
+            variant={selectedCategory === 'all' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setSelectedCategory('all')}
+            className="text-xs shrink-0"
+          >
+            All Seasonal ({seasonalItems.length})
+          </Button>
+          {categories.map(cat => {
+            const count = seasonalItems.filter(i => i.menu_categories?.id === cat.id).length;
+            return (
+              <Button
+                key={cat.id}
+                variant={selectedCategory === cat.id ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setSelectedCategory(cat.id)}
+                className="text-xs shrink-0 gap-1.5"
+              >
+                {cat.name.toLowerCase().includes('pastry') || cat.name.toLowerCase().includes('food') ? (
+                  <Utensils className="w-3.5 h-3.5" />
+                ) : (
+                  <Coffee className="w-3.5 h-3.5" />
+                )}
+                {cat.name} ({count})
               </Button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-6">
-              {upcomingReservations.map(res => {
-                const order = res.orders?.[0];
-                return (
-                  <div key={res.id} className="glass rounded-xl p-6 border-l-4 border-l-primary shadow-sm hover:shadow-md transition-all">
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2 mb-2">
-                          <h3 className="font-semibold text-lg text-foreground truncate">Table for {res.party_size} {res.cafes?.name ? `at ${res.cafes.name}` : ''}</h3>
-                          <Badge variant="outline" className={`capitalize px-3 py-1 font-semibold ${
-                            (res.status === 'confirmed' || res.status === 'paid') ? 'bg-green-500/10 text-green-600 border-green-500/20' : 
-                            res.status === 'pending_payment' ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20' : ''
-                          }`}>{res.status.replace('_', ' ')}</Badge>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 my-4">
-                          <div className="bg-background/50 p-3 rounded-lg border border-border">
-                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Date</p>
-                            <p className="font-medium text-sm">{new Date(res.reservation_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
-                          </div>
-                          <div className="bg-background/50 p-3 rounded-lg border border-border">
-                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Time</p>
-                            <p className="font-medium text-sm">{res.reservation_time.substring(0, 5)}</p>
-                          </div>
-                          <div className="bg-background/50 p-3 rounded-lg border border-border">
-                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Guests</p>
-                            <p className="font-medium text-sm">{res.party_size} People</p>
-                          </div>
-                          <div className="bg-background/50 p-3 rounded-lg border border-border">
-                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Status</p>
-                            <p className="font-medium text-sm">{res.qr_token ? 'Ready' : 'Pending'}</p>
-                          </div>
-                        </div>
+            );
+          })}
+        </div>
+      )}
 
-                        {order && (
-                          <div className="mt-4 bg-background/50 rounded-lg p-4 border border-border">
-                            <p className="text-xs font-semibold uppercase tracking-wider text-foreground mb-2">Preorder Included</p>
-                            <p className="text-sm text-muted-foreground mb-2">
-                              {order.order_items?.map((item: any) => `${item.quantity}x ${item.menu_items?.name}`).join(', ')}
-                            </p>
-                            <div className="flex items-center gap-2 text-sm">
-                              <span className="font-bold text-primary">{order.total_amount} ETB</span>
-                              <Badge variant="outline" className={`text-[10px] capitalize ${order.payment_status === 'paid' ? 'text-green-600 border-green-200' : ''}`}>{order.payment_status}</Badge>
-                            </div>
-                          </div>
-                        )}
+      {/* Seasonal Products Grid */}
+      {filteredItems.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredItems.map(item => {
+            const notes = item.flavor_profile?.notes || [];
+            const roast = item.flavor_profile?.roast;
+            const isAvailable = item.is_available !== false;
 
-                        {res.status === 'pending_verification' && (
-                          <div className="mt-4">
-                            <Button variant="default" size="sm" asChild>
-                              <Link to={`/reservation/verify/${res.id}`}>Verify Reservation Now</Link>
-                            </Button>
-                          </div>
-                        )}
-                        {(res.status === 'pending_payment' || (res.status === 'verified' && res.payment_status !== 'paid')) && (
-                          <div className="mt-4">
-                            <Button variant="default" size="sm" asChild>
-                              <Link to={`/reservation/verify/${res.id}`}>Complete Payment</Link>
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* QR Code Section */}
-                      {res.qr_token && (res.status === 'confirmed' || res.status === 'paid' || res.status === 'checked_in') && (
-                        <div className="shrink-0 bg-white p-3 rounded-xl shadow-sm border border-border flex flex-col items-center ml-0 md:ml-4 mt-4 md:mt-0">
-                          <QRCodeDataUrl text={res.qr_token} width={120} />
-                          <span className="text-[10px] uppercase font-bold text-muted-foreground mt-2 tracking-wider text-center block">Scan to check in</span>
-                          <span className="text-[10px] text-muted-foreground mt-1 font-mono text-center block">{res.reservation_code}</span>
-                        </div>
-                      )}
+            return (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="glass rounded-xl border border-border overflow-hidden flex flex-col hover:border-primary/40 transition-all shadow-sm"
+              >
+                {/* Product Image */}
+                <div className="aspect-[4/3] w-full overflow-hidden relative bg-muted">
+                  {item.image_url ? (
+                    <img
+                      src={item.image_url}
+                      alt={item.name}
+                      className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-muted/60">
+                      <Coffee className="w-12 h-12 text-muted-foreground/30" />
                     </div>
-                    
-                    <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-border mt-4">
-                      {(res.status === 'pending' || res.status === 'pending_payment' || res.status === 'confirmed' || res.status === 'paid') && (
-                        <Button variant="outline" size="sm" onClick={() => cancelReservation(res.id)} className="text-destructive hover:text-destructive hover:bg-destructive/10 border-border">
-                          Cancel Reservation
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="sm" className="text-muted-foreground ml-auto" onClick={() => toast.success('Redirecting to modify...')}>
-                        Modify
-                      </Button>
-                    </div>
+                  )}
+
+                  {/* Status Badges */}
+                  <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
+                    {item.menu_categories?.name && (
+                      <Badge variant="secondary" className="backdrop-blur-md bg-background/80 text-[10px]">
+                        {item.menu_categories.name}
+                      </Badge>
+                    )}
+                    {roast && (
+                      <Badge variant="outline" className="backdrop-blur-md bg-background/80 text-[10px]">
+                        {roast}
+                      </Badge>
+                    )}
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </TabsContent>
 
-        <TabsContent value="history" className="space-y-4 outline-none">
-          {historyReservations.length === 0 ? (
-            <div className="py-24 text-center text-muted-foreground glass rounded-xl border border-border">
-              <Calendar className="w-12 h-12 mx-auto mb-4 opacity-20" />
-              <p>Your reservation history is empty.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {historyReservations.map((res, idx) => (
-                <div key={res.id} className="glass rounded-xl p-5 border border-border hover:border-primary/30 transition-colors flex flex-col">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="font-semibold text-foreground">
-                        {new Date(res.reservation_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  <div className="absolute top-3 right-3">
+                    {item.hasOrdered ? (
+                      <Badge className="bg-emerald-600 text-white text-[10px] gap-1 shadow-sm">
+                        <CheckCircle2 className="w-3 h-3" /> Tried
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="backdrop-blur-md bg-background/90 text-primary font-semibold text-[10px]">
+                        New to Try
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-start gap-2">
+                      <h3 className="font-semibold text-lg text-foreground leading-snug">
+                        {item.name}
                       </h3>
-                      <p className="text-xs text-muted-foreground">{res.reservation_time.substring(0, 5)} • {res.party_size} Guests</p>
+                      <span className="font-bold text-primary text-base shrink-0 font-mono">
+                        {item.price} {item.currency || 'ETB'}
+                      </span>
                     </div>
-                    <Badge variant="secondary" className="capitalize text-[10px]">{res.status.replace(/_/g, ' ')}</Badge>
-                  </div>
-                  
-                  <div className="flex-1 mt-2 mb-4">
-                    <p className="text-sm text-muted-foreground">
-                      {res.cafes?.name || 'Coffee OS Cafe'}
+
+                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                      {item.description}
                     </p>
+
+                    {/* Flavor Notes */}
+                    {notes.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {notes.map((note, idx) => (
+                          <span
+                            key={idx}
+                            className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium"
+                          >
+                            {note}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  
-                  <div className="flex items-center gap-2 pt-3 border-t border-border">
-                    <Button asChild variant="outline" size="sm" className="flex-1 gap-2 h-9" onClick={handleRebook}>
-                      <Link to="/reservations"><RotateCcw className="w-3.5 h-3.5" /> Rebook</Link>
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-muted-foreground hover:text-red-500 hover:bg-red-50" onClick={() => toast.success('Added to favorites')}>
-                      <Heart className="w-4 h-4" />
+
+                  {/* Action */}
+                  <div className="pt-3 border-t border-border flex items-center justify-between gap-2 mt-auto">
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5" /> Limited harvest
+                    </span>
+                    <Button
+                      size="sm"
+                      disabled={!isAvailable}
+                      onClick={() => handleOrder(item)}
+                      className="gap-1.5"
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5" />
+                      {isAvailable ? 'Order Item' : 'Sold Out'}
                     </Button>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

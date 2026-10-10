@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { MessageSquare, Heart, Sparkles, Send, Flag, Clock, Loader2, Check, Headphones, MessageCircle, Reply } from 'lucide-react';
+import { MessageSquare, Heart, Sparkles, Send, Flag, Clock, Loader2, Headphones, Reply } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -22,6 +22,7 @@ interface ReactionCount {
 interface Props {
   cafeId: string;
   sessionToken: string;
+  readOnly?: boolean;
 }
 
 const REACTION_ICONS: Record<string, { icon: any; label: string }> = {
@@ -33,11 +34,13 @@ const REACTION_ICONS: Record<string, { icon: any; label: string }> = {
 export default function EphemeralCommunalBoard({
   cafeId,
   sessionToken,
+  readOnly = false,
 }: Props) {
   const [messages, setMessages] = useState<PulseMessage[]>([]);
   const [content, setContent] = useState('');
   const [noteType, setNoteType] = useState<'public_board' | 'barista_appreciation' | 'vibe_note'>('public_board');
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [posting, setPosting] = useState(false);
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
   
@@ -50,6 +53,14 @@ export default function EphemeralCommunalBoard({
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
+  const messageRequest = useRef(0);
+
+  useEffect(() => {
+    if (readOnly) {
+      setReplyingToId(null);
+      setReplyText('');
+    }
+  }, [readOnly]);
 
   const fetchReactions = useCallback(async (msgIds: string[]) => {
     if (!msgIds.length) return;
@@ -81,6 +92,7 @@ export default function EphemeralCommunalBoard({
 
   const fetchMessages = useCallback(async () => {
     if (!cafeId) return;
+    const requestId = ++messageRequest.current;
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -93,15 +105,18 @@ export default function EphemeralCommunalBoard({
         .limit(40);
 
       if (error) throw error;
+      if (requestId !== messageRequest.current) return;
       const list = (data as PulseMessage[]) ?? [];
       setMessages(list);
+      setLoadError(false);
       if (list.length > 0) {
-        fetchReactions(list.map(m => m.id));
+        void fetchReactions(list.map(m => m.id));
       }
     } catch (err) {
       console.error('Failed to fetch pulse messages:', err);
+      if (requestId === messageRequest.current) setLoadError(true);
     } finally {
-      setLoading(false);
+      if (requestId === messageRequest.current) setLoading(false);
     }
   }, [cafeId, fetchReactions]);
 
@@ -130,10 +145,13 @@ export default function EphemeralCommunalBoard({
       )
       .subscribe();
 
-    const handleFocus = () => fetchMessages();
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') void fetchMessages();
+    };
     window.addEventListener('focus', handleFocus);
 
     return () => {
+      messageRequest.current += 1;
       supabase.removeChannel(msgChannel);
       window.removeEventListener('focus', handleFocus);
     };
@@ -141,6 +159,7 @@ export default function EphemeralCommunalBoard({
 
   const handlePost = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (readOnly) return;
     const text = content.trim();
     if (!text || text.length > 200 || !cafeId) return;
 
@@ -169,6 +188,7 @@ export default function EphemeralCommunalBoard({
   };
 
   const handleSendReply = async (parentId: string) => {
+    if (readOnly) return;
     const text = replyText.trim();
     if (!text || text.length > 150 || !cafeId) return;
 
@@ -188,7 +208,7 @@ export default function EphemeralCommunalBoard({
       setReplyText('');
       setReplyingToId(null);
       toast.success('In-line reply posted anonymously.');
-      fetchMessages();
+          void fetchMessages();
     } catch {
       toast.error('Failed to submit reply');
     } finally {
@@ -197,15 +217,17 @@ export default function EphemeralCommunalBoard({
   };
 
   const handleToggleReaction = async (msgId: string, reactionType: string) => {
+    if (readOnly) return;
     const key = `${msgId}_${reactionType}`;
     const alreadyReacted = myReactions.has(key);
 
     try {
       if (alreadyReacted) {
-        await supabase
+        const { error } = await supabase
           .from('cafe_pulse_message_reactions')
           .delete()
           .match({ message_id: msgId, reaction_type: reactionType, session_token: sessionToken });
+        if (error) throw error;
 
         setMyReactions(prev => {
           const next = new Set(prev);
@@ -220,13 +242,14 @@ export default function EphemeralCommunalBoard({
           },
         }));
       } else {
-        await supabase
+        const { error } = await supabase
           .from('cafe_pulse_message_reactions')
           .insert({
             message_id: msgId,
             reaction_type: reactionType,
             session_token: sessionToken,
           });
+        if (error) throw error;
 
         setMyReactions(prev => new Set(prev).add(key));
         setReactions(prev => ({
@@ -238,19 +261,20 @@ export default function EphemeralCommunalBoard({
         }));
       }
     } catch {
-      // ignore
+      toast.error('Could not update this reaction. Please try again.');
     }
   };
 
   const handleReport = async (msgId: string) => {
     if (reportedIds.has(msgId)) return;
     try {
-      await supabase.from('cafe_pulse_reports').insert({
+      const { error } = await supabase.from('cafe_pulse_reports').insert({
         cafe_id: cafeId,
         reporter_session: sessionToken,
         reported_message_id: msgId,
         reason: 'Inappropriate or offensive community content',
       });
+      if (error) throw error;
       setReportedIds(prev => new Set(prev).add(msgId));
       toast.info('Thank you. Message flagged for barista review.');
     } catch {
@@ -282,7 +306,11 @@ export default function EphemeralCommunalBoard({
       </div>
 
       {/* Post Form */}
-      <form onSubmit={handlePost} className="space-y-2">
+      {readOnly ? (
+        <div role="status" className="border-l-2 border-primary/50 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+          Observer mode is on. Notes, replies, and reactions are paused; reporting remains available for safety.
+        </div>
+      ) : <form onSubmit={handlePost} className="space-y-2">
         <div className="flex gap-1.5 pb-1">
           {[
             { key: 'public_board', label: 'Communal Wall' },
@@ -332,7 +360,7 @@ export default function EphemeralCommunalBoard({
             Broadcast Note
           </Button>
         </div>
-      </form>
+      </form>}
 
       {/* Messages Feed */}
       <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
@@ -341,11 +369,16 @@ export default function EphemeralCommunalBoard({
             <Loader2 className="w-4 h-4 animate-spin mx-auto mb-1.5" />
             Reading ambient frequency…
           </div>
+        ) : loadError && messages.length === 0 ? (
+          <div role="alert" className="flex flex-wrap items-center justify-center gap-3 py-6 text-center text-xs text-destructive">
+            <span>Could not load the communal board.</span>
+            <Button type="button" size="sm" variant="outline" onClick={() => void fetchMessages()}>Retry</Button>
+          </div>
         ) : topLevelMessages.length === 0 ? (
           <div className="py-6 text-center border border-dashed border-border/80 rounded-lg p-3 space-y-1">
             <p className="text-xs font-medium text-foreground">The board is calm and empty</p>
             <p className="text-[11px] text-muted-foreground">
-              Be the first guest to leave an unhurried note or barista compliment.
+              {readOnly ? 'Nothing has been shared in this window.' : 'Leave an unhurried note or a barista compliment.'}
             </p>
           </div>
         ) : (
@@ -395,8 +428,10 @@ export default function EphemeralCommunalBoard({
                       return (
                         <button
                           key={type}
+                          type="button"
+                          disabled={readOnly}
                           onClick={() => handleToggleReaction(msg.id, type)}
-                          className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border transition-colors ${
+                          className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                             active
                               ? 'border-primary/50 bg-primary/10 text-primary font-medium'
                               : 'border-transparent text-muted-foreground hover:bg-muted/30'
@@ -410,8 +445,10 @@ export default function EphemeralCommunalBoard({
                   </div>
 
                   <button
+                    type="button"
+                    disabled={readOnly}
                     onClick={() => setReplyingToId(replyingToId === msg.id ? null : msg.id)}
-                    className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground font-medium px-1.5 py-0.5 rounded hover:bg-muted/20"
+                    className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground font-medium px-1.5 py-0.5 rounded hover:bg-muted/20 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Reply className="w-3 h-3" />
                     <span>Reply {msgReplies.length > 0 && `(${msgReplies.length})`}</span>
